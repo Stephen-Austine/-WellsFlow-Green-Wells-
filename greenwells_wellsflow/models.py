@@ -30,3 +30,18 @@ class Order(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey("product.id"))
     status = db.Column(db.String(50), default="Received")
 
+class Fleet(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), nullable=False)         # e.g., "Truck A"
+    reg_no = db.Column(db.String(30), unique=True)          # e.g., "KAA 123A"
+    category = db.Column(db.String(50))                     # e.g., Tanker, Trailer, Small Truck
+    status = db.Column(db.String(30), default="available")  # available, in transit, service
+
+class FleetOrder(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey("user.id"))
+    vehicle_type = db.Column(db.String(50))  # e.g., Tanker, Trailer, Small Truck
+    quantity = db.Column(db.Integer)
+    destination = db.Column(db.String(200))
+    status = db.Column(db.String(50), default="Pending")  # Pending, Approved, Assigned, Completed
+

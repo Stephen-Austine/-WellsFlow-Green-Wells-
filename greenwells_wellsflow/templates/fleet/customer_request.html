@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Bulk Petroleum Transport Services</h2>
+<p>GreenWells provides tankers, trailers, and trucks for bulk petroleum transport across Kenya and East Africa.</p>
+
+<form method="POST">
+  {{ form.hidden_tag() }}
+  <div class="mb-3">{{ form.vehicle_type.label }} {{ form.vehicle_type(class="form-select") }}</div>
+  <div class="mb-3">{{ form.quantity.label }} {{ form.quantity(class="form-control") }}</div>
+  <div class="mb-3">{{ form.destination.label }} {{ form.destination(class="form-control") }}</div>
+  <button type="submit" class="btn btn-success">Submit Fleet Request</button>
+</form>
+{% endblock %}
