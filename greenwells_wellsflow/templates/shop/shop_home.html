@@ -1,15 +1,36 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="container-fluid mt-5">
+<div class="container-fluid mt-4">
   <div class="row">
 
+    <!-- Sidebar Navigation -->
+   <!-- Sidebar Navigation -->
+<div class="col-lg-2 d-none d-lg-block">
+  <div class="glass-card p-3 h-100">
+    <ul class="nav flex-column">
+      <li class="nav-item mb-2"><a href="/" class="nav-link text-dark"><i class="bi bi-house-door-fill me-2"></i>Dashboard</a></li>
+      <li class="nav-item mb-2"><a href="{{ url_for('shop.shop_home') }}" class="nav-link text-dark fw-bold"><i class="bi bi-bag-fill me-2"></i>Shop</a></li>
+      <li class="nav-item mb-2"><a href="{{ url_for('fleet.fleet_home') }}" class="nav-link text-dark"><i class="bi bi-truck me-2"></i>Fleet</a></li>
+      <li class="nav-item mb-2"><a href="#" class="nav-link text-dark"><i class="bi bi-box-seam me-2"></i>My Orders</a></li>
+      <li class="nav-item mb-2"><a href="#" class="nav-link text-dark"><i class="bi bi-credit-card me-2"></i>Payments</a></li>
+      <li class="nav-item mb-2"><a href="#" class="nav-link text-dark"><i class="bi bi-bar-chart-line me-2"></i>Reports</a></li>
+    </ul>
+  </div>
+</div>
+
+
     <!-- Main Shop Section -->
-    <div class="col-md-9">
-      <h2 class="text-success fw-bold mb-4">🛒 GreenWells Shop</h2>
+    <div class="col-lg-7">
+      <!-- Search + Filter -->
+      <div class="d-flex mb-4">
+        <input type="text" class="form-control me-2" placeholder="🔍 Search products...">
+        <button class="btn btn-success">Filter</button>
+      </div>
 
       <!-- Categories -->
       <div class="d-flex flex-wrap justify-content-start mb-4">
+        <button class="btn btn-glass m-2 active">All</button>
         <button class="btn btn-glass m-2">Engine Oil</button>
         <button class="btn btn-glass m-2">Brake Fluid</button>
         <button class="btn btn-glass m-2">Grease</button>
@@ -20,21 +41,21 @@
       <!-- Products Grid -->
       <div class="row g-4">
         {% for product in products %}
-        <div class="col-md-4">
+        <div class="col-md-6">
           <div class="glass-card p-3 h-100 d-flex flex-column">
             <div class="text-center mb-3">
               <img src="{{ url_for('static', filename='images/products/' + product.image) }}"
                    alt="{{ product.product_name }}"
                    class="img-fluid rounded"
-                   style="max-height: 150px; object-fit: contain;">
+                   style="max-height: 120px; object-fit: contain;">
             </div>
-            <h5 class="fw-bold">{{ product.product_name }}</h5>
+            <h6 class="fw-bold">{{ product.product_name }}</h6>
             <p class="text-muted small">{{ product.product_description }}</p>
             <p class="fw-bold text-success">KES {{ product.retail_price }}</p>
             <div class="mt-auto d-flex justify-content-between">
               <a href="#" class="btn btn-outline-secondary btn-sm">Wishlist</a>
               <a href="{{ url_for('shop.add_to_cart', product_id=product.product_id) }}"
-                 class="btn btn-success btn-sm">Add to Cart</a>
+                 class="btn btn-success btn-sm">Order Now</a>
             </div>
           </div>
         </div>
@@ -42,31 +63,44 @@
       </div>
     </div>
 
-    <!-- Cart Sidebar -->
-    <div class="col-md-3">
+    <!-- Invoice Sidebar -->
+    <div class="col-lg-3">
       <div class="glass-card p-3">
-        <h4 class="fw-bold">🧾 Invoice</h4>
+        <h5 class="fw-bold mb-3">🧾 Invoice</h5>
+
+        {% if cart %}
         <ul class="list-group list-group-flush mb-3">
           {% for item in cart %}
           <li class="list-group-item d-flex justify-content-between align-items-center">
             {{ item['name'] }}
             <span>KES {{ item['price'] }}</span>
           </li>
-          {% else %}
-          <li class="list-group-item text-muted">Your cart is empty</li>
           {% endfor %}
         </ul>
+        {% else %}
+        <p class="text-muted">Your cart is empty</p>
+        {% endif %}
 
-        <div class="mb-3">
-          <p class="mb-1">Subtotal: <span class="fw-bold">KES {{ subtotal }}</span></p>
-          <p class="mb-1">Tax: <span class="fw-bold">KES {{ tax }}</span></p>
-          <p class="mb-1">Total: <span class="fw-bold text-success">KES {{ total }}</span></p>
+        <h6 class="mt-3">Payment Summary</h6>
+        <p>Subtotal: <span class="fw-bold">KES {{ subtotal }}</span></p>
+        <p>Tax: <span class="fw-bold">KES {{ tax }}</span></p>
+        <p>Total: <span class="fw-bold text-success">KES {{ total }}</span></p>
+
+        <h6 class="mt-3">Payment Method</h6>
+        <div class="d-flex gap-2 mb-3">
+          <img src="{{ url_for('static', filename='images/payments/visa.png') }}" width="40">
+          <img src="{{ url_for('static', filename='images/payments/mastercard.png') }}" width="40">
+          <img src="{{ url_for('static', filename='images/payments/paypal.png') }}" width="50">
+          <img src="{{ url_for('static', filename='images/payments/mpesa.png') }}" width="50">
         </div>
 
         <button class="btn btn-success w-100">Place Order</button>
       </div>
     </div>
+
   </div>
 </div>
 
 {% endblock %}
+
+
