@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template
+# Define blueprint
+shop_bp = Blueprint("shop", __name__)
 
-shop_bp = Blueprint("shop", __name__, template_folder="../templates/shop")
-
+# Shop home route
 @shop_bp.route("/")
 def shop_home():
-    return "<h2>Shop System Home</h2><p>This is where customers will order products.</p>"
+    return render_template("shop.html")
