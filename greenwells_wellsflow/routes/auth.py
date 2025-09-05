@@ -48,7 +48,7 @@ def signup():
             email,
             hashed_password,  # store hashed password
             "Unknown",
-            "Inactive",
+            "Active",
             0
         ))
 
