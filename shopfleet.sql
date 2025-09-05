@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS `Fleet` (
 	`fleet_model` TEXT NOT NULL,
 	`fleet_category` TEXT NOT NULL,
 	`registration_date` REAL NOT NULL,
-	`employee_id` INTEGER,
+	`employee_id` INTEGER NOT NULL,
 	`fleet_mileage` INTEGER NOT NULL,
 	`chassis_number` INTEGER NOT NULL,
 	`cargo_type` TEXT NOT NULL,

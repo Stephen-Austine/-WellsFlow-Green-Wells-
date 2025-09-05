@@ -1,3 +1,5 @@
+PRAGMA foreign_keys = ON;
+
 CREATE TABLE IF NOT EXISTS Users (
     user_id INTEGER PRIMARY KEY AUTOINCREMENT,
     first_name TEXT NOT NULL,
@@ -15,6 +17,7 @@ CREATE TABLE IF NOT EXISTS Users (
 CREATE TABLE IF NOT EXISTS Products (
     product_id INTEGER PRIMARY KEY AUTOINCREMENT,
     product_name TEXT NOT NULL,
+    product_category TEXT NOT NULL,
     product_description TEXT NOT NULL,
     product_quantity INTEGER NOT NULL,
     product_cost INTEGER NOT NULL,
@@ -25,36 +28,6 @@ CREATE TABLE IF NOT EXISTS Products (
     location_description TEXT,
     status TEXT NOT NULL DEFAULT 'Not sold',
     FOREIGN KEY(user_id) REFERENCES Users(user_id)
-);
-
-CREATE TABLE IF NOT EXISTS Orders (
-    order_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    product_id INTEGER NOT NULL,
-    user_id INTEGER NOT NULL,
-    employee_id INTEGER NOT NULL,
-    fleet_id INTEGER NOT NULL,
-    status TEXT NOT NULL DEFAULT 'Stage 1',
-    order_timestamp REAL NOT NULL,
-    FOREIGN KEY(product_id) REFERENCES Products(product_id),
-    FOREIGN KEY(user_id) REFERENCES Users(user_id),
-    FOREIGN KEY(employee_id) REFERENCES Employees(employee_id),
-    FOREIGN KEY(fleet_id) REFERENCES Fleet(fleet_id)
-);
-
-CREATE TABLE IF NOT EXISTS Fleet (
-    fleet_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    registration_number TEXT NOT NULL UNIQUE,
-    fleet_brand TEXT NOT NULL,
-    fleet_model TEXT NOT NULL,
-    registration_date REAL NOT NULL,
-    employee_id INTEGER,
-    fleet_mileage INTEGER NOT NULL,
-    chassis_number TEXT NOT NULL,
-    cargo_type TEXT NOT NULL,
-    max_capacity INTEGER NOT NULL,
-    status TEXT NOT NULL DEFAULT 'Inactive',
-    last_login REAL NOT NULL,
-    FOREIGN KEY(employee_id) REFERENCES Employees(employee_id)
 );
 
 CREATE TABLE IF NOT EXISTS Employees (
@@ -70,6 +43,37 @@ CREATE TABLE IF NOT EXISTS Employees (
     role TEXT NOT NULL DEFAULT 'Customer',
     status TEXT NOT NULL DEFAULT 'Inactive',
     last_login REAL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS Fleet (
+    fleet_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    registration_number TEXT NOT NULL UNIQUE,
+    fleet_brand TEXT NOT NULL,
+    fleet_model TEXT NOT NULL,
+    fleet_category TEXT NOT NULL,
+    registration_date REAL NOT NULL,
+    employee_id INTEGER NOT NULL,
+    fleet_mileage INTEGER NOT NULL,
+    chassis_number TEXT NOT NULL,
+    cargo_type TEXT NOT NULL,
+    max_capacity INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'Inactive',
+    last_login REAL NOT NULL,
+    FOREIGN KEY(employee_id) REFERENCES Employees(employee_id)
+);
+
+CREATE TABLE IF NOT EXISTS Orders (
+    order_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    employee_id INTEGER NOT NULL,
+    fleet_id INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'Stage 1',
+    order_timestamp REAL NOT NULL,
+    FOREIGN KEY(product_id) REFERENCES Products(product_id),
+    FOREIGN KEY(user_id) REFERENCES Users(user_id),
+    FOREIGN KEY(employee_id) REFERENCES Employees(employee_id),
+    FOREIGN KEY(fleet_id) REFERENCES Fleet(fleet_id)
 );
 
 CREATE TABLE IF NOT EXISTS Reviews (
