@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container-fluid mt-5">
+  <div class="row">
+
+    <!-- Main Shop Section -->
+    <div class="col-md-9">
+      <h2 class="text-success fw-bold mb-4">🛒 GreenWells Shop</h2>
+
+      <!-- Categories -->
+      <div class="d-flex flex-wrap justify-content-start mb-4">
+        <button class="btn btn-glass m-2">Engine Oil</button>
+        <button class="btn btn-glass m-2">Brake Fluid</button>
+        <button class="btn btn-glass m-2">Grease</button>
+        <button class="btn btn-glass m-2">Filters</button>
+        <button class="btn btn-glass m-2">Lubricants</button>
+      </div>
+
+      <!-- Products Grid -->
+      <div class="row g-4">
+        {% for product in products %}
+        <div class="col-md-4">
+          <div class="glass-card p-3 h-100 d-flex flex-column">
+            <div class="text-center mb-3">
+              <img src="{{ url_for('static', filename='images/products/' + product.image) }}"
+                   alt="{{ product.product_name }}"
+                   class="img-fluid rounded"
+                   style="max-height: 150px; object-fit: contain;">
+            </div>
+            <h5 class="fw-bold">{{ product.product_name }}</h5>
+            <p class="text-muted small">{{ product.product_description }}</p>
+            <p class="fw-bold text-success">KES {{ product.retail_price }}</p>
+            <div class="mt-auto d-flex justify-content-between">
+              <a href="#" class="btn btn-outline-secondary btn-sm">Wishlist</a>
+              <a href="{{ url_for('shop.add_to_cart', product_id=product.product_id) }}"
+                 class="btn btn-success btn-sm">Add to Cart</a>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Cart Sidebar -->
+    <div class="col-md-3">
+      <div class="glass-card p-3">
+        <h4 class="fw-bold">🧾 Invoice</h4>
+        <ul class="list-group list-group-flush mb-3">
+          {% for item in cart %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            {{ item['name'] }}
+            <span>KES {{ item['price'] }}</span>
+          </li>
+          {% else %}
+          <li class="list-group-item text-muted">Your cart is empty</li>
+          {% endfor %}
+        </ul>
+
+        <div class="mb-3">
+          <p class="mb-1">Subtotal: <span class="fw-bold">KES {{ subtotal }}</span></p>
+          <p class="mb-1">Tax: <span class="fw-bold">KES {{ tax }}</span></p>
+          <p class="mb-1">Total: <span class="fw-bold text-success">KES {{ total }}</span></p>
+        </div>
+
+        <button class="btn btn-success w-100">Place Order</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

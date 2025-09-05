@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-5">
+  <h2 class="text-center text-success fw-bold mb-4">🛒 GreenWells Shop</h2>
+
+  <!-- Explore Categories -->
+  <div class="d-flex flex-wrap justify-content-center mb-4">
+    <button class="btn btn-glass m-2">Engine Oil</button>
+    <button class="btn btn-glass m-2">Brake Fluid</button>
+    <button class="btn btn-glass m-2">Grease</button>
+    <button class="btn btn-glass m-2">Filters</button>
+    <button class="btn btn-glass m-2">Lubricants</button>
+  </div>
+
+  <!-- Products Grid -->
+  <div class="row g-4">
+    {% for product in products %}
+    <div class="col-md-4">
+      <div class="glass-card p-3 h-100 d-flex flex-column">
+        <!-- Product Image -->
+        <div class="text-center mb-3">
+          <img src="{{ url_for('static', filename='images/products/' + product.image) }}"
+               alt="{{ product.product_name }}"
+               class="img-fluid rounded"
+               style="max-height: 150px; object-fit: contain;">
+        </div>
+
+        <!-- Product Info -->
+        <h5 class="fw-bold">{{ product.product_name }}</h5>
+        <p class="text-muted small">{{ product.product_description }}</p>
+        <p class="fw-bold text-success">KES {{ product.retail_price }}</p>
+
+        <!-- Actions -->
+        <div class="mt-auto d-flex justify-content-between">
+          <a href="#" class="btn btn-outline-secondary btn-sm">Wishlist</a>
+          <a href="{{ url_for('shop.add_to_cart', product_id=product.product_id) }}"
+             class="btn btn-success btn-sm">Order Now</a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %}

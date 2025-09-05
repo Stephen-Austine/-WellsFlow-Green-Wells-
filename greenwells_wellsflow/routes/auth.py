@@ -1,7 +1,8 @@
 # routes/auth.py
-from flask import Blueprint, render_template, redirect, url_for, flash
+from flask import Blueprint, render_template, redirect, url_for, flash, session
 from flask_login import login_user, logout_user, login_required
 import sqlite3
+import bcrypt  # ✅ for password hashing
 
 # Define the database path
 shopfleetdb = '../-WellsFlow-Green-Wells-/greenwells_wellsflow/instance/shopfleet.db'
@@ -14,30 +15,28 @@ def signup():
     from forms import SignupForm  # Import here to avoid circular imports
     form = SignupForm()
     if form.validate_on_submit():
-        # Connect to the SQLite database
         conn = sqlite3.connect(shopfleetdb)
         cursor = conn.cursor()
 
-        # Get the email from the form and normalize it
         email = form.email.data.lower().strip()
 
-        # Check if the email already exists in the database
+        # Check if the email already exists
         cursor.execute("SELECT email FROM Users WHERE email = ?", (email,))
         existing_user = cursor.fetchone()
 
         if existing_user:
-            # Close the connection if the email already exists
             conn.close()
             flash("Email already registered. Please log in.", "warning")
             return redirect(url_for("auth.login"))
 
-        # Prepare the data for insertion
         fname = form.fname.data.strip()
         lname = form.lname.data.strip()
         phone = form.phone.data.strip()
-        password = form.password.data.strip()  # Plaintext password
+        password = form.password.data.strip()
 
-        # Insert the new user into the database
+        # ✅ Hash password before saving
+        hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+
         cursor.execute("""
             INSERT INTO Users (first_name, last_name, phone_number, email, password, location, status, last_login)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -46,17 +45,15 @@ def signup():
             lname,
             phone,
             email,
-            password,  # Plaintext password
-            "Unknown",  # Default location
-            "Inactive",  # Default status
-            0  # Default last_login timestamp
+            hashed_password,  # store hashed password
+            "Unknown",
+            "Inactive",
+            0
         ))
 
-        # Commit the transaction and close the connection
         conn.commit()
         conn.close()
 
-        # Flash success message
         flash("Account created! You can now log in.", "success")
         return redirect(url_for("auth.login"))
 
@@ -65,55 +62,47 @@ def signup():
 
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
-    from forms import LoginForm  # Import here to avoid circular imports
+    from forms import LoginForm
     form = LoginForm()
     if form.validate_on_submit():
-        # Connect to the SQLite database
         conn = sqlite3.connect(shopfleetdb)
         cursor = conn.cursor()
 
-        # Get the email and password from the form
         email = form.email.data.lower().strip()
         password = form.password.data
 
-        # First, check if the email exists in the Employees table
+        # Check Employees first
         cursor.execute("SELECT employee_id, password, role FROM Employees WHERE email = ?", (email,))
         employee = cursor.fetchone()
 
         if employee:
-            # Unpack the result
             employee_id, stored_password, role = employee
-
-            # Compare plaintext passwords
-            if password == stored_password:  # Plaintext comparison
-                print(f"Employee login success. Role: {role}")  # Debugging output
-                flash(f"Logged in successfully as an {role}!", "success")
-                return redirect(url_for("home"))
+            if bcrypt.checkpw(password.encode("utf-8"), stored_password):
+                flash(f"Logged in successfully as {role}!", "success")
+                conn.close()
+                # ✅ Role-based redirect
+                if role.lower() == "admin":
+                    return redirect(url_for("fleet.fleet_home"))
+                else:
+                    return redirect(url_for("home"))
             else:
                 flash("Invalid email or password.", "danger")
                 conn.close()
                 return render_template("auth/login.html", form=form)
 
-        # If the email is not in Employees, check the Users table
+        # If not employee, check Users table
         cursor.execute("SELECT user_id, password FROM Users WHERE email = ?", (email,))
         user = cursor.fetchone()
-
-        # Close the database connection
         conn.close()
 
-        # Check if the email exists in the Users table
         if user:
-            print("User login success")  # Debugging output
-            user_id, stored_password = user  # Unpack the result
-
-            # Compare plaintext passwords
-            if password == stored_password:  # Plaintext comparison
+            user_id, stored_password = user
+            if bcrypt.checkpw(password.encode("utf-8"), stored_password):
                 flash("Logged in successfully!", "success")
-                return redirect(url_for("home"))
+                return redirect(url_for("shop.shop_home"))  # ✅ Customers go to Shop
             else:
                 flash("Invalid email or password.", "danger")
         else:
-            print("not exist")  # Print not exist if email does not exist
             flash("Email does not exist.", "danger")
 
     return render_template("auth/login.html", form=form)
