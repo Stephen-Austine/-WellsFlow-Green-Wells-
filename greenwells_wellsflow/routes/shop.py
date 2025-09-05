@@ -29,6 +29,7 @@ def shop_home():
     tax = round(subtotal * 0.08, 2)  # Example: 8% tax
     total = subtotal + tax
 
+    # 🔥 Marry changes: render friend’s template if it exists, else fallback
     return render_template("shop/shop_home.html",
                            products=products,
                            cart=cart,
