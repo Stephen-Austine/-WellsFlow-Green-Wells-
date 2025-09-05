@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS `Users` (
 	`otp` TEXT,
 	`otp_timestamp` REAL,
 	`location` TEXT NOT NULL,
-	`status` TEXT NOT NULL DEFAULT 'Inactive',
+	`status` TEXT NOT NULL DEFAULT 'Active',
 	`last_login` REAL NOT NULL
 );
 CREATE TABLE IF NOT EXISTS `Products` (
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS `Employees` (
 	`otp` TEXT NOT NULL,
 	`otp_timestamp` REAL NOT NULL,
 	`location` TEXT NOT NULL,
-	`role` TEXT NOT NULL DEFAULT 'Customer',
+	`role` TEXT NOT NULL DEFAULT 'None',
 	`status` TEXT NOT NULL DEFAULT 'Inactive',
 	`last_login` REAL NOT NULL
 );

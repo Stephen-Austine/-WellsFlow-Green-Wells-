@@ -3,7 +3,7 @@ import sqlite3
 
 shop_bp = Blueprint("shop", __name__, template_folder="../templates/shop")
 
-shopfleetdb = 'instance/shopfleet.db'
+shopfleetdb = '../-WellsFlow-Green-Wells-/greenwells_wellsflow/instance/shopfleet.db'
 
 
 @shop_bp.route("/")

@@ -36,6 +36,7 @@ def signup():
 
         # ✅ Hash password before saving
         hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+        print("Here is hashed password: ",hashed_password)
 
         cursor.execute("""
             INSERT INTO Users (first_name, last_name, phone_number, email, password, location, status, last_login)
