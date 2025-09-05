@@ -41,7 +41,41 @@ def home():
 
 @app.route("/dashboard")
 def dashboard():
-    return render_template("fleet/dashboard.html")
+    return render_template("fleet/main_fleet_templates/dashboard.html")
+
+
+@app.route("/fleet")
+def fleet():
+    return render_template("fleet/main_fleet_templates/fleet.html")
+
+
+@app.route("/employees")
+def employees():
+    return render_template("fleet/main_fleet_templates/employees.html")
+
+
+@app.route("/production")
+def production():
+    return render_template("fleet/main_fleet_templates/production.html")
+
+
+@app.route("/orders")
+def orders():
+    return render_template("fleet/main_fleet_templates/orders.html")
+
+
+@app.route("/customers")
+def customers():
+    return render_template("fleet/main_fleet_templates/customers.html")
+
+
+@app.route("/finances")
+def finances():
+    return render_template("fleet/main_fleet_templates/finances.html")
+
+@app.route("/reports")
+def reports():
+    return render_template("fleet/main_fleet_templates/reports.html")
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -88,7 +88,7 @@ def login():
             if password == stored_password:  # Plaintext comparison
                 print(f"Employee login success. Role: {role}")  # Debugging output
                 flash(f"Logged in successfully as an {role}!", "success")
-                return redirect(url_for("home"))
+                return redirect(url_for("dashboard"))
             else:
                 flash("Invalid email or password.", "danger")
                 conn.close()
