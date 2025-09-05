@@ -38,5 +38,10 @@ def load_user(user_id):
 def home():
     return render_template("base.html")
 
+
+@app.route("/dashboard")
+def dashboard():
+    return render_template("fleet/dashboard.html")
+
 if __name__ == "__main__":
     app.run(debug=True)
