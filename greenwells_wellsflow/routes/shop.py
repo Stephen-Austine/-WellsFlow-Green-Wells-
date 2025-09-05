@@ -52,3 +52,5 @@ def add_to_cart(product_id):
         session["cart"] = cart
 
     return redirect(url_for("shop.shop_home"))
+
+
