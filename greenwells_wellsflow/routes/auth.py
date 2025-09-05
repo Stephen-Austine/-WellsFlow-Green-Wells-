@@ -76,22 +76,38 @@ def login():
         email = form.email.data.lower().strip()
         password = form.password.data
 
-        # Query the database to check if the email exists
+        # First, check if the email exists in the Employees table
+        cursor.execute("SELECT employee_id, password, role FROM Employees WHERE email = ?", (email,))
+        employee = cursor.fetchone()
+
+        if employee:
+            # Unpack the result
+            employee_id, stored_password, role = employee
+
+            # Compare plaintext passwords
+            if password == stored_password:  # Plaintext comparison
+                print(f"Employee login success. Role: {role}")  # Debugging output
+                flash(f"Logged in successfully as an {role}!", "success")
+                return redirect(url_for("home"))
+            else:
+                flash("Invalid email or password.", "danger")
+                conn.close()
+                return render_template("auth/login.html", form=form)
+
+        # If the email is not in Employees, check the Users table
         cursor.execute("SELECT user_id, password FROM Users WHERE email = ?", (email,))
-        user = cursor.fetchone()  # Fetch the first matching row
+        user = cursor.fetchone()
 
         # Close the database connection
         conn.close()
 
-        # Check if the email exists in the database
+        # Check if the email exists in the Users table
         if user:
-            print("success")  # Print success if email exists
+            print("User login success")  # Debugging output
             user_id, stored_password = user  # Unpack the result
 
             # Compare plaintext passwords
             if password == stored_password:  # Plaintext comparison
-                # Simulate Flask-Login behavior by fetching the user ID
-                # Since we're not using SQLAlchemy, we don't have a full User object
                 flash("Logged in successfully!", "success")
                 return redirect(url_for("home"))
             else:
