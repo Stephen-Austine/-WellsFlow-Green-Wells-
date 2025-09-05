@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS `Products` (
 	`product_name` TEXT NOT NULL,
 	`product_category` TEXT NOT NULL,
 	`product_description` TEXT NOT NULL,
+	`product_image` TEXT NOT NULL,
 	`product_quantity` INTEGER NOT NULL,
 	`product_cost` INTEGER NOT NULL,
 	`retail_price` INTEGER NOT NULL,
