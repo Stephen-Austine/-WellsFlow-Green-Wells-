@@ -68,6 +68,12 @@ def vehicles():
     return render_template("fleet/adminside_fleet/vehicles.html")
 
 
+@app.route("/vehiclesmanagefleet")
+def vehiclesmanagefleet():
+    return render_template("fleet/fleet_extend/vehicles/managefleet.html")
+
+
+
 @app.route("/employees")
 def employees():
     return render_template("fleet/adminside_fleet/employees.html")
