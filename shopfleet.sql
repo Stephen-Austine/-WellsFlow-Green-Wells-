@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS `Orders` (
 	`employee_id` INTEGER NOT NULL,
 	`fleet_id` INTEGER NOT NULL,
 	`status` TEXT NOT NULL DEFAULT 'Stage 1',
+	`product_destination` TEXT NOT NULL,
 	`order_timestamp` REAL NOT NULL,
 FOREIGN KEY(`product_id`) REFERENCES `Products`(`product_id`),
 FOREIGN KEY(`user_id`) REFERENCES `Users`(`user_id`),
@@ -53,6 +54,7 @@ CREATE TABLE IF NOT EXISTS `Fleet` (
 	`cargo_type` TEXT NOT NULL,
 	`max_capacity` INTEGER NOT NULL,
 	`status` TEXT NOT NULL DEFAULT 'Inactive',
+	`fleet_destination` TEXT,
 	`last_login` REAL NOT NULL,
 FOREIGN KEY(`employee_id`) REFERENCES `Employees`(`employee_id`)
 );
