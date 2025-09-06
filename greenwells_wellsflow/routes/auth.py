@@ -35,7 +35,8 @@ def signup():
         password = form.password.data.strip()
 
         # ✅ Hash password before saving
-        hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+        hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")  
+# decode to string before inserting into SQLite
         print("Here is hashed password: ",hashed_password)
 
         cursor.execute("""
@@ -78,12 +79,13 @@ def login():
 
         if employee:
             employee_id, stored_password, role = employee
-            if bcrypt.checkpw(password.encode("utf-8"), stored_password):
+            if bcrypt.checkpw(password.encode("utf-8"), stored_password.encode("utf-8")):
                 flash(f"Logged in successfully as {role}!", "success")
                 conn.close()
                 # ✅ Role-based redirect
                 if role.lower() == "admin":
-                    return redirect(url_for("fleet.fleet_home"))
+                    # return redirect(url_for("fleet.fleet_home"))
+                    return redirect(url_for("dashboard"))  # Admins go to Dashboard
                 else:
                     return redirect(url_for("home"))
             else:
@@ -98,7 +100,7 @@ def login():
 
         if user:
             user_id, stored_password = user
-            if bcrypt.checkpw(password.encode("utf-8"), stored_password):
+            if bcrypt.checkpw(password.encode("utf-8"), stored_password.encode("utf-8")):
                 flash("Logged in successfully!", "success")
                 return redirect(url_for("shop.shop_home"))  # ✅ Customers go to Shop
             else:

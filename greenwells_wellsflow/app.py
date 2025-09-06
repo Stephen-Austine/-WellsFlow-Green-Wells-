@@ -60,41 +60,41 @@ def home():
 
 @app.route("/dashboard")
 def dashboard():
-    return render_template("fleet/main_fleet_templates/dashboard.html")
+    return render_template("fleet/adminside_fleet/dashboard.html")
 
 
-@app.route("/fleet")
-def fleet():
-    return render_template("fleet/main_fleet_templates/fleet.html")
+@app.route("/vehicles")
+def vehicles():
+    return render_template("fleet/adminside_fleet/vehicles.html")
 
 
 @app.route("/employees")
 def employees():
-    return render_template("fleet/main_fleet_templates/employees.html")
+    return render_template("fleet/adminside_fleet/employees.html")
 
 
 @app.route("/production")
 def production():
-    return render_template("fleet/main_fleet_templates/production.html")
+    return render_template("fleet/adminside_fleet/production.html")
 
 
 @app.route("/orders")
 def orders():
-    return render_template("fleet/main_fleet_templates/orders.html")
+    return render_template("fleet/adminside_fleet/orders.html")
 
 
 @app.route("/customers")
 def customers():
-    return render_template("fleet/main_fleet_templates/customers.html")
+    return render_template("fleet/adminside_fleet/customers.html")
 
 
 @app.route("/finances")
 def finances():
-    return render_template("fleet/main_fleet_templates/finances.html")
+    return render_template("fleet/adminside_fleet/finances.html")
 
 @app.route("/reports")
 def reports():
-    return render_template("fleet/main_fleet_templates/reports.html")
+    return render_template("fleet/adminside_fleet/reports.html")
 
 
 if __name__ == "__main__":
