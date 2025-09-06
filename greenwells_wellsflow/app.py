@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+from flask import *
 from flask_login import LoginManager
 import sqlite3
 from user_object import UserObject
@@ -8,7 +8,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'greenwells_secret'
 
 # Path to your actual SQLite database
-shopfleetdb = 'instance/shopfleet.db'
+shopfleetdb = '../-WellsFlow-Green-Wells-/greenwells_wellsflow/instance/shopfleet.db'
 
 # Initialize Flask-Login
 login_manager = LoginManager(app)
@@ -68,10 +68,50 @@ def vehicles():
     return render_template("fleet/adminside_fleet/vehicles.html")
 
 
-@app.route("/vehiclesmanagefleet")
+@app.route("/vehiclesmanagefleet", methods=['GET', 'POST'])
 def vehiclesmanagefleet():
-    return render_template("fleet/fleet_extend/vehicles/managefleet.html")
-
+    conn = sqlite3.connect(shopfleetdb)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    # Get the filter status from query parameters
+    filter_status = request.args.get('status')
+    
+    # Handle status update
+    if request.method == 'POST':
+        fleet_id = request.form.get('fleet_id')
+        new_status = request.form.get('status')
+        
+        cursor.execute("UPDATE Fleet SET status = ? WHERE fleet_id = ?", (new_status, fleet_id))
+        conn.commit()
+        flash("Fleet status updated successfully!", "success")
+        # Preserve filter after update
+        redirect_url = url_for('vehiclesmanagefleet')
+        if filter_status:
+            redirect_url += f'?status={filter_status}'
+        return redirect(redirect_url)
+    
+    # Fetch filtered or all fleets
+    if filter_status:
+        cursor.execute("SELECT * FROM Fleet WHERE status = ?", (filter_status,))
+    else:
+        cursor.execute("SELECT * FROM Fleet")
+    fleets = cursor.fetchall()
+    
+    # Get status counts for navbar
+    cursor.execute("""
+        SELECT status, COUNT(*) as count 
+        FROM Fleet 
+        GROUP BY status
+    """)
+    status_counts = cursor.fetchall()
+    
+    conn.close()
+    
+    return render_template("fleet/fleet_extend/vehicles/managefleet.html", 
+                         fleets=fleets, 
+                         status_counts=status_counts,
+                         current_filter=filter_status)
 
 
 @app.route("/employees")

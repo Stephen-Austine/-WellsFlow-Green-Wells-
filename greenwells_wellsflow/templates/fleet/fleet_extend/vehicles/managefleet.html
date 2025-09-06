@@ -3,7 +3,143 @@
 {% block vehicle_content %}
 
 
-vehicles here
+
+<div class="container mt-4">
+  <h3>Manage Fleet</h3>
+  
+  <!-- Status Navbar -->
+  <ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+      <a class="nav-link {% if not current_filter %}active{% endif %}" href="{{ url_for('vehiclesmanagefleet') }}">All Fleets</a>
+    </li>
+    {% for status_row in status_counts %}
+      <li class="nav-item">
+        <a class="nav-link {% if current_filter == status_row['status'] %}active{% endif %}" 
+           href="{{ url_for('vehiclesmanagefleet', status=status_row['status']) }}">
+          {{ status_row['status'] }} <span class="badge bg-secondary">{{ status_row['count'] }}</span>
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show flash-message" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <div class="card" style="height: 70vh; overflow-y: auto;">
+    <div class="card-body">
+      {% if fleets %}
+        {% for fleet in fleets %}
+          <div class="card mt-2">
+            <div class="card-body d-flex justify-content-between align-items-center">
+              <div>
+                <strong>ID:</strong> {{ fleet['fleet_id'] }}<br>
+                <strong>Type:</strong> {{ fleet['fleet_brand'] }} {{ fleet['fleet_model'] }}<br>
+                <strong>Category:</strong> {{ fleet['fleet_category'] }}<br>
+                <strong>Cargo Type:</strong> {{ fleet['cargo_type'] }}<br>
+                <strong>Status:</strong> 
+                <span class="badge bg-{% if fleet['status'] == 'Active' %}success{% elif fleet['status'] == 'In Service' %}primary{% elif fleet['status'] == 'Decommissioned' %}danger{% else %}secondary{% endif %}">
+                  {{ fleet['status'] }}
+                </span>
+              </div>
+              <div>
+                <!-- More Info Button -->
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#fleetModal{{ fleet['fleet_id'] }}">
+                  More Info
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Wider Modal -->
+          <div class="modal fade" id="fleetModal{{ fleet['fleet_id'] }}" tabindex="-1" aria-labelledby="fleetModalLabel{{ fleet['fleet_id'] }}" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="fleetModalLabel{{ fleet['fleet_id'] }}">Fleet Details - ID: {{ fleet['fleet_id'] }}</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="row">
+                    <div class="col-md-6">
+                      <p><strong>Fleet ID:</strong> {{ fleet['fleet_id'] }}</p>
+                      <p><strong>Registration Number:</strong> {{ fleet['registration_number'] }}</p>
+                      <p><strong>Brand:</strong> {{ fleet['fleet_brand'] }}</p>
+                      <p><strong>Model:</strong> {{ fleet['fleet_model'] }}</p>
+                      <p><strong>Category:</strong> {{ fleet['fleet_category'] }}</p>
+                      <p><strong>Registration Date:</strong> {{ fleet['registration_date'] }}</p>
+                      <p><strong>Mileage:</strong> {{ fleet['fleet_mileage'] }}</p>
+                    </div>
+                    <div class="col-md-6">
+                      <p><strong>Chassis Number:</strong> {{ fleet['chassis_number'] }}</p>
+                      <p><strong>Cargo Type:</strong> {{ fleet['cargo_type'] }}</p>
+                      <p><strong>Max Capacity:</strong> {{ fleet['max_capacity'] }}</p>
+                      <p><strong>Employee ID:</strong> {{ fleet['employee_id'] }}</p>
+                      <p><strong>Destination:</strong> {{ fleet['fleet_destination'] or 'N/A' }}</p>
+                      <p><strong>Last Login:</strong> {{ fleet['last_login'] }}</p>
+                      <p><strong>Current Status:</strong> 
+                        <span class="badge bg-{% if fleet['status'] == 'Active' %}success{% elif fleet['status'] == 'In Service' %}primary{% elif fleet['status'] == 'Decommissioned' %}danger{% else %}secondary{% endif %}">
+                          {{ fleet['status'] }}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <!-- Status Change Form -->
+                  <hr>
+                  <form method="POST">
+                    <input type="hidden" name="fleet_id" value="{{ fleet['fleet_id'] }}">
+                    <div class="mb-3">
+                      <label for="statusSelect{{ fleet['fleet_id'] }}" class="form-label"><strong>Change Status:</strong></label>
+                      <select class="form-select" id="statusSelect{{ fleet['fleet_id'] }}" name="status">
+                        <option value="Active" {% if fleet['status'] == 'Active' %}selected{% endif %}>Active</option>
+                        <option value="In Service" {% if fleet['status'] == 'In Service' %}selected{% endif %}>In Service</option>
+                        <option value="Decommissioned" {% if fleet['status'] == 'Decommissioned' %}selected{% endif %}>Decommissioned</option>
+                        <option value="Idle" {% if fleet['status'] == 'Idle' %}selected{% endif %}>Idle</option>
+                      </select>
+                    </div>
+                    <button type="submit" class="btn btn-success">Update Status</button>
+                  </form>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="text-center py-5">
+          <h5>No fleets found{% if current_filter %} with status "{{ current_filter }}"{% endif %}.</h5>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // Auto-dismiss flash messages after 3 seconds
+  document.addEventListener('DOMContentLoaded', function() {
+    const flashMessages = document.querySelectorAll('.flash-message');
+    flashMessages.forEach(function(flash) {
+      setTimeout(function() {
+        const alert = bootstrap.Alert.getOrCreateInstance(flash);
+        alert.close();
+      }, 3000);
+    });
+  });
+</script>
+
+
 
 
 {% endblock vehicle_content %}

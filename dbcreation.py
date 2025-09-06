@@ -35,6 +35,35 @@ INSERT OR IGNORE INTO Employees (
 ))
 
 # -------------------------------
+# Insert additional employees by role
+# -------------------------------
+roles = {
+    "Driver": 3,
+    "ProductManager": 3,
+    "Admin": 3,
+    "Financer": 3,
+    "CustomerService": 3
+}
+
+emp_id = 2  # start after default admin
+for role, count in roles.items():
+    for i in range(1, count + 1):
+        cursor.execute("""
+        INSERT OR IGNORE INTO Employees (
+            employee_id, first_name, last_name, phone_number, email, password,
+            otp, otp_timestamp, location, role, status, last_login
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            emp_id,
+            f"{role}{i}", "Test",
+            710000000 + emp_id,
+            f"{role.lower()}{i}@shopfleet.com",
+            hash_password("pass123"),  # real password: pass123
+            "", 0, "Nairobi", role, "Active", int(time.time())
+        ))
+        emp_id += 1
+
+# -------------------------------
 # Insert dummy Users
 # -------------------------------
 for i in range(1, 6):
@@ -94,13 +123,13 @@ for i in range(1, 6):
     INSERT OR IGNORE INTO Fleet (
         fleet_id, registration_number, fleet_brand, fleet_model, fleet_category,
         registration_date, employee_id, fleet_mileage, chassis_number,
-        cargo_type, max_capacity, status, fleet_destination, last_login
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        cargo_type, max_capacity, status, last_login
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         i, f"KAA-{1000+i}", "Isuzu", f"Model-{i}", "Truck",
         int(time.time()), 1, random.randint(10000, 200000),
         100000 + i, "Fuel", random.randint(1000, 5000),
-        "Active", "Nairobi", int(time.time())
+        "Active", int(time.time())
     ))
 
 # -------------------------------
@@ -110,14 +139,13 @@ for i in range(1, 11):
     cursor.execute("""
     INSERT OR IGNORE INTO Orders (
         order_id, product_id, user_id, employee_id, fleet_id,
-        status, product_destination, product_arrival, otp, otp_timestamp, order_timestamp
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        status, order_timestamp
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
     """, (
         i, random.randint(1, product_id - 1), random.randint(1, 5),
         1, random.randint(1, 5),
         random.choice(["Stage 1", "Stage 2", "Completed"]),
-        "Customer Location", random.choice([0, 1]),
-        str(random.randint(100000, 999999)), int(time.time()), int(time.time())
+        int(time.time())
     ))
 
 # -------------------------------
@@ -140,4 +168,4 @@ for i in range(1, 11):
 conn.commit()
 conn.close()
 
-print(f"Database '{db_name}' created successfully with dummy data and bcrypt-hashed passwords.")
+print(f"Database '{db_name}' created successfully with dummy employees, users, products, fleet, orders, and reviews.")
