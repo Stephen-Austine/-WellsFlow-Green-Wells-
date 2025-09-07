@@ -45,3 +45,5 @@ class FleetOrder(db.Model):
     destination = db.Column(db.String(200))
     status = db.Column(db.String(50), default="Pending")  # Pending, Approved, Assigned, Completed
 
+
+

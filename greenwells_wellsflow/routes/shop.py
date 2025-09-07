@@ -1,56 +1,67 @@
-from flask import Blueprint, render_template, session, redirect, url_for
-import sqlite3
+from flask import Blueprint, render_template, session, redirect, url_for, request, flash
+from models import Product  # make sure Product model is imported
 
-shop_bp = Blueprint("shop", __name__, template_folder="../templates/shop")
+shop_bp = Blueprint('shop', __name__, url_prefix="/shop")
 
-shopfleetdb = '../-WellsFlow-Green-Wells-/greenwells_wellsflow/instance/shopfleet.db'
-
-
+# --- Shop Home ---
 @shop_bp.route("/")
 def shop_home():
-    conn = sqlite3.connect(shopfleetdb)
-    cursor = conn.cursor()
-    cursor.execute("SELECT product_id, product_name, product_description, retail_price, 'engine_oil.png' as image FROM Products")
-    products = [
-        {
-            "product_id": row[0],
-            "product_name": row[1],
-            "product_description": row[2],
-            "retail_price": row[3],
-            "image": row[4]
-        }
-        for row in cursor.fetchall()
-    ]
-    conn.close()
-
-    # Load cart from session
+    products = Product.query.all()
     cart = session.get("cart", [])
-    subtotal = sum(item["price"] for item in cart)
-    tax = round(subtotal * 0.08, 2)  # Example: 8% tax
-    total = subtotal + tax
+    total_price = sum(item['price'] for item in cart)
+    return render_template(
+        "shop/shop_home.html",
+        products=products,
+        cart=cart,
+        total_price=total_price
+    )
 
-    # 🔥 Marry changes: render friend’s template if it exists, else fallback
-    return render_template("shop/shop_home.html",
-                           products=products,
-                           cart=cart,
-                           subtotal=subtotal,
-                           tax=tax,
-                           total=total)
-
-
-@shop_bp.route("/add_to_cart/<int:product_id>")
+# --- Add to Cart ---
+@shop_bp.route("/add_to_cart/<int:product_id>", methods=["POST"])
 def add_to_cart(product_id):
-    conn = sqlite3.connect(shopfleetdb)
-    cursor = conn.cursor()
-    cursor.execute("SELECT product_id, product_name, retail_price FROM Products WHERE product_id = ?", (product_id,))
-    row = cursor.fetchone()
-    conn.close()
+    product = Product.query.get(product_id)
+    if not product:
+        flash("Product not found", "danger")
+        return redirect(url_for("shop.shop_home"))
 
-    if row:
-        cart = session.get("cart", [])
-        cart.append({"id": row[0], "name": row[1], "price": row[2]})
-        session["cart"] = cart
+    cart = session.get("cart", [])
+    cart.append({
+        "id": product.product_id,
+        "name": product.product_name,
+        "price": product.retail_price
+    })
+    session["cart"] = cart
+    session.modified = True
 
+    flash(f"{product.product_name} added to cart.", "success")
     return redirect(url_for("shop.shop_home"))
 
+# --- Remove from Cart ---
+@shop_bp.route("/remove_from_cart/<int:product_id>", methods=["POST"])
+def remove_from_cart(product_id):
+    cart = session.get("cart", [])
+    cart = [item for item in cart if item["id"] != product_id]
+    session["cart"] = cart
+    session.modified = True
+    return redirect(url_for("shop.shop_home"))
 
+# --- Clear Cart ---
+@shop_bp.route("/checkout", methods=["POST"])
+def clear_cart():
+    session.pop("cart", None)
+    return redirect(url_for("shop.shop_home"))
+
+@shop_bp.route('/checkout')
+def checkout():
+    cart = session.get('cart', [])
+    subtotal = sum(item['price'] * item['quantity'] for item in cart)
+    tax = round(subtotal * 0.16, 2)  # 16% VAT example
+    total = subtotal + tax
+
+    return render_template(
+        'shop/checkout.html',
+        cart=cart,
+        subtotal=subtotal,
+        tax=tax,
+        total=total
+    )

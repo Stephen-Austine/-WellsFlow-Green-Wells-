@@ -3,16 +3,27 @@ from flask_login import LoginManager
 import sqlite3
 from user_object import UserObject
 
+from extensions import db
+from routes.shop import shop_bp
+from routes.fleet import fleet_bp
+from routes.auth import auth_bp
+
 # Initialize app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'greenwells_secret'
 
-# Path to your actual SQLite database
+# Use same SQLite DB for SQLAlchemy models
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///shopfleet.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db.init_app(app)
+
+# Path for raw sqlite3 queries (flask_login part)
 shopfleetdb = 'instance/shopfleet.db'
 
-# Initialize Flask-Login
+# Flask-Login setup
 login_manager = LoginManager(app)
-login_manager.login_view = "auth.login"  # redirect if not logged in
+login_manager.login_view = "auth.login"
 
 
 @login_manager.user_loader
@@ -20,7 +31,6 @@ def load_user(user_id):
     conn = sqlite3.connect(shopfleetdb)
     cursor = conn.cursor()
 
-    # First check Users table
     cursor.execute(
         "SELECT user_id, first_name, last_name, email, 'customer' as role FROM Users WHERE user_id = ?",
         (user_id,),
@@ -30,7 +40,6 @@ def load_user(user_id):
         conn.close()
         return UserObject(*row)
 
-    # If not found, check Employees table
     cursor.execute(
         "SELECT employee_id, 'Admin', 'User', email, role FROM Employees WHERE employee_id = ?",
         (user_id,),
@@ -43,11 +52,7 @@ def load_user(user_id):
     return None
 
 
-# Blueprints
-from routes.shop import shop_bp
-from routes.fleet import fleet_bp
-from routes.auth import auth_bp
-
+# Register Blueprints
 app.register_blueprint(shop_bp, url_prefix="/shop")
 app.register_blueprint(fleet_bp, url_prefix="/fleet")
 app.register_blueprint(auth_bp, url_prefix="/auth")
@@ -92,10 +97,13 @@ def customers():
 def finances():
     return render_template("fleet/main_fleet_templates/finances.html")
 
+
 @app.route("/reports")
 def reports():
     return render_template("fleet/main_fleet_templates/reports.html")
 
 
 if __name__ == "__main__":
+    with app.app_context():
+        db.create_all()  # ✅ creates Product table if not exists
     app.run(debug=True)
