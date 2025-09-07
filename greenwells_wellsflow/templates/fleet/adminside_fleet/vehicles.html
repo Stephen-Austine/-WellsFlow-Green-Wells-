@@ -1,0 +1,25 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<section class="row">
+    <div class="col-md-4">
+        <button class="btn btn-outline-primary" onclick="location.href = '/vehiclesmanagefleet'">Manage Fleet Vehicles</button>
+    
+    </div>
+    <div class="col-md-4">
+        <button class="btn btn-outline-primary">Add Fleet Vehicles</button>
+    
+    </div>
+    <div class="col-md-4">
+        <button class="btn btn-outline-primary">Add Fleet Categories</button>
+    
+    </div>
+
+    {% block vehicle_content %}
+
+    {% endblock vehicle_content %}
+
+</section>
+
+
+{% endblock %}

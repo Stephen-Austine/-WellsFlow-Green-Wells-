@@ -1,6 +1,7 @@
 import sqlite3
 import random
 import time
+import bcrypt
 
 # Database file
 db_name = "shopfleet.db"
@@ -15,6 +16,19 @@ with open(sql_file, "r", encoding="utf-8") as f:
     sql_script = f.read()
 cursor.executescript(sql_script)
 
+# Utility: hash password
+def hash_password(plain_text_password: str) -> str:
+    return bcrypt.hashpw(plain_text_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+# ID base offsets
+BASE_USER = 100_000_000
+BASE_EMPLOYEE = 200_000_000
+BASE_PRODUCT = 300_000_000
+BASE_FLEET = 400_000_000
+BASE_ORDER = 500_000_000
+BASE_REVIEW = 600_000_000
+BASE_CART = 700_000_000
+
 # -------------------------------
 # Insert default admin employee
 # -------------------------------
@@ -22,11 +36,45 @@ cursor.execute("""
 INSERT OR IGNORE INTO Employees (
     employee_id, first_name, last_name, phone_number, email, password,
     otp, otp_timestamp, location, role, status, last_login
-) VALUES (
-    1, 'Admin', 'User', 1234567890, 'admin@shopfleet.com', 'admin123',
-    '', 0, 'HQ', 'Admin', 'Active', strftime('%s','now')
-);
-""")
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+""", (
+    BASE_EMPLOYEE + 1, "Admin", "User", 1234567890, "admin@shopfleet.com",
+    hash_password("admin123"),
+    "000000", int(time.time()),
+    "HQ", "Admin", "Active", int(time.time())
+))
+
+# -------------------------------
+# Insert extra employees
+# -------------------------------
+roles = {
+    "Driver": 3,
+    "ProductManager": 3,
+    "Admin": 2,
+    "Financer": 3,
+    "CustomerService": 3,
+}
+
+employee_id = BASE_EMPLOYEE + 2
+for role, count in roles.items():
+    for i in range(1, count + 1):
+        cursor.execute("""
+        INSERT OR IGNORE INTO Employees (
+            employee_id, first_name, last_name, phone_number, email, password,
+            otp, otp_timestamp, location, role, status, last_login
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            employee_id,
+            role, f"User{i}", 700000000 + employee_id % 1000,  # phone number variation
+            f"{role.lower()}{i}@shopfleet.com",
+            hash_password("password123"),
+            "000000", int(time.time()),
+            "Nairobi Depot",
+            role,
+            "Active",
+            int(time.time())
+        ))
+        employee_id += 1
 
 # -------------------------------
 # Insert dummy Users
@@ -38,9 +86,11 @@ for i in range(1, 6):
         otp, otp_timestamp, location, status, last_login
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
-        i, f"User{i}", f"Test{i}", 700000000 + i,
-        f"user{i}@mail.com", "pass123",
-        "", 0, "Nairobi", "Active", int(time.time())
+        BASE_USER + i, f"User{i}", f"Test{i}", 740000000 + i,
+        f"user{i}@mail.com",
+        hash_password("pass123"),
+        None, None,
+        "Nairobi", "Active", int(time.time())
     ))
 
 # -------------------------------
@@ -52,10 +102,10 @@ categories = {
     "Engine Oil": ["2kg", "1kg", "5kg", "Premium", "Fast", "Ultra"]
 }
 
-product_id = 1
+product_id = BASE_PRODUCT + 1
 for category, subs in categories.items():
     for sub in subs:
-        for n in range(10):  # 10 records per subcategory
+        for n in range(10):
             cursor.execute("""
             INSERT OR IGNORE INTO Products (
                 product_id, product_name, product_category, product_description,
@@ -67,12 +117,12 @@ for category, subs in categories.items():
                 f"{sub} {category}",
                 category,
                 f"High quality {sub} {category}",
-                f"/images/{category.lower().replace(' ', '_')}_{sub.lower().replace(' ', '_')}.png",  # fake image path
-                random.randint(10, 100),  # stock
-                random.randint(500, 2000),  # cost
-                random.randint(2500, 5000),  # retail
-                random.randint(1, 5),  # user_id FK
-                f"REG-{product_id:04d}",
+                f"/images/{category.lower().replace(' ', '_')}_{sub.lower().replace(' ', '_')}.png",
+                random.randint(10, 100),
+                random.randint(500, 2000),
+                random.randint(2500, 5000),
+                BASE_USER + random.randint(1, 5),  # FK to Users
+                f"REG-{product_id:09d}",
                 "Nairobi Depot",
                 f"{sub} storage section",
                 "Not sold"
@@ -90,27 +140,68 @@ for i in range(1, 6):
         cargo_type, max_capacity, status, last_login
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
-        i, f"KAA-{1000+i}", "Isuzu", f"Model-{i}", "Truck",
-        int(time.time()), 1, random.randint(10000, 200000),
+        BASE_FLEET + i, f"KAA-{1000+i}", "Isuzu", f"Model-{i}", "Truck",
+        int(time.time()), BASE_EMPLOYEE + random.randint(2, 10),
+        random.randint(10000, 200000),
         100000 + i, "Fuel", random.randint(1000, 5000),
         "Active", int(time.time())
     ))
 
 # -------------------------------
-# Insert dummy Orders
+# Insert dummy Cart items
 # -------------------------------
-for i in range(1, 11):
-    cursor.execute("""
-    INSERT OR IGNORE INTO Orders (
-        order_id, product_id, user_id, employee_id, fleet_id,
-        status, order_timestamp
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (
-        i, random.randint(1, product_id - 1), random.randint(1, 5),
-        1, random.randint(1, 5),
-        random.choice(["Stage 1", "Stage 2", "Completed"]),
-        int(time.time())
-    ))
+cart_id = BASE_CART + 1
+for user_id in range(1, 6):  # For each user
+    user_cart_items = random.randint(1, 5)  # Each user has 1-5 cart items
+    used_products = set()  # To avoid duplicate products in same cart
+    
+    for _ in range(user_cart_items):
+        # Get a random product that hasn't been added to this user's cart yet
+        product_id = BASE_PRODUCT + random.randint(1, 150)
+        while product_id in used_products:
+            product_id = BASE_PRODUCT + random.randint(1, 150)
+        used_products.add(product_id)
+        
+        cursor.execute("""
+        INSERT OR IGNORE INTO Cart (
+            cart_id, product_id, user_id, status
+        ) VALUES (?, ?, ?, ?)
+        """, (
+            cart_id,
+            product_id,
+            BASE_USER + user_id,
+            random.choice(["Wishlist", "In Cart", "Saved for Later"])
+        ))
+        cart_id += 1
+
+# -------------------------------
+# Insert dummy Orders (now referencing cart items)
+# -------------------------------
+# First, get some cart items to create orders from
+cursor.execute("SELECT cart_id FROM Cart LIMIT 10")
+cart_items = cursor.fetchall()
+
+for i, cart_item in enumerate(cart_items):
+    cart_id = cart_item[0]
+    # Get the product_id and user_id from the cart item
+    cursor.execute("SELECT product_id, user_id FROM Cart WHERE cart_id = ?", (cart_id,))
+    cart_data = cursor.fetchone()
+    if cart_data:
+        product_id, user_id = cart_data
+        cursor.execute("""
+        INSERT OR IGNORE INTO Orders (
+            order_id, cart_id, employee_id, fleet_id,
+            status, product_destination, product_arrival, otp, otp_timestamp, order_timestamp
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            BASE_ORDER + i + 1,
+            cart_id,
+            BASE_EMPLOYEE + random.randint(2, 10),
+            BASE_FLEET + random.randint(1, 5),
+            random.choice(["Stage 1", "Stage 2", "Completed"]),
+            "Customer Location", random.choice([0, 1]),
+            str(random.randint(100000, 999999)), int(time.time()), int(time.time())
+        ))
 
 # -------------------------------
 # Insert dummy Reviews
@@ -122,14 +213,17 @@ for i in range(1, 11):
         review_timestamp, status
     ) VALUES (?, ?, ?, ?, ?, ?, ?)
     """, (
-        i, random.randint(1, product_id - 1),
+        BASE_REVIEW + i,
+        BASE_PRODUCT + random.randint(1, 150),
         f"Review {i} for product", random.randint(1, 5),
-        random.randint(1, 5), time.strftime("%Y-%m-%d %H:%M:%S"),
-        "Published"
+        BASE_USER + random.randint(1, 5),
+        time.strftime("%Y-%m-%d %H:%M:%S"),
+        "Not sold"
     ))
 
 # Save and close
 conn.commit()
 conn.close()
 
-print(f"Database '{db_name}' created successfully with dummy data.")
+print(f"Database '{db_name}' created successfully with namespaced IDs for employees, users, products, fleet, orders, reviews, and cart.")
+print(f"Created {len(cart_items)} cart items and orders")
