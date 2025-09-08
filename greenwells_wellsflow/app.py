@@ -9,7 +9,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'greenwells_secret'
 
 # Path to your actual SQLite database
-shopfleetdb = 'instance/shopfleet.db'
+shopfleetdb = '../-WellsFlow-Green-Wells-/greenwells_wellsflow/instance/shopfleet.db'
 
 # Flask-Login setup
 login_manager = LoginManager(app)
