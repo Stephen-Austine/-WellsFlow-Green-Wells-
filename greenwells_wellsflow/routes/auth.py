@@ -1,5 +1,5 @@
 # routes/auth.py
-from flask import Blueprint, render_template, redirect, url_for, flash
+from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required
 import sqlite3
 import bcrypt
@@ -7,10 +7,13 @@ import bcrypt
 # Define the database path
 shopfleetdb = '../-WellsFlow-Green-Wells-/greenwells_wellsflow/instance/shopfleet.db'
 
+# ✅ Define the blueprint here (no circular import)
 auth_bp = Blueprint("auth", __name__, template_folder="../templates/auth")
 
 print("Auth blueprint registered")  # Debug line
 
+
+# --- Signup ---
 @auth_bp.route("/signup", methods=["GET", "POST"])
 def signup():
     print("Signup route accessed")  # Debug line
@@ -61,7 +64,8 @@ def signup():
 
     return render_template("auth/signup.html", form=form)
 
-# routes/auth.py
+
+# --- Login ---
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     from forms import LoginForm
@@ -85,7 +89,6 @@ def login():
             employee_id, stored_password, role, first_name, last_name, username = employee
             print(f"Found employee: {first_name} {last_name}, username: {username}, role: {role}")  # Debug line
             if bcrypt.checkpw(password.encode("utf-8"), stored_password.encode("utf-8")):
-                # Create user object for Flask-Login with username
                 from user_object import UserObject
                 user = UserObject(employee_id, first_name, last_name, email, role, username)
                 login_user(user)
@@ -112,7 +115,6 @@ def login():
             user_id, stored_password, first_name, last_name = user
             print(f"Found user: {first_name} {last_name}")  # Debug line
             if bcrypt.checkpw(password.encode("utf-8"), stored_password.encode("utf-8")):
-                # Create user object for Flask-Login
                 from user_object import UserObject
                 user_obj = UserObject(user_id, first_name, last_name, email, "customer")
                 login_user(user_obj)
@@ -125,6 +127,8 @@ def login():
 
     return render_template("auth/login.html", form=form)
 
+
+# --- Logout ---
 @auth_bp.route("/logout")
 @login_required
 def logout():
@@ -132,7 +136,20 @@ def logout():
     flash("You have been logged out.", "info")
     return redirect(url_for("auth.login"))
 
-# Add this to verify routes are registered
+
+# --- Test route (debugging) ---
 @auth_bp.route("/test")
 def test():
     return "Auth routes are working!"
+
+
+# --- Forgot Password ---
+@auth_bp.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "POST":
+        email = request.form.get("email")
+        # 🔹 Placeholder: implement actual reset email later
+        flash("If that email exists, a password reset link has been sent.", "info")
+        return redirect(url_for("auth.login"))
+
+    return render_template("auth/forgot_password.html")
