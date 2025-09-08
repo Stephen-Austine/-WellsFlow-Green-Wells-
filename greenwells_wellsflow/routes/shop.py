@@ -6,7 +6,12 @@ from wtforms import IntegerField, StringField, SubmitField, SelectField
 from wtforms.validators import DataRequired, NumberRange
 from datetime import datetime
 
-shop_bp = Blueprint("shop", __name__, template_folder="../templates/shop.html")
+shop = Blueprint("shop", __name__, template_folder="../templates/shop")
+
+def get_db_connection():
+    conn = sqlite3.connect('../-WellsFlow-Green-Wells-/greenwells_wellsflow/instance/shopfleet.db')
+    conn.row_factory = sqlite3.Row  # This allows you to access columns by name
+    return conn
 
 shopfleetdb = '../-WellsFlow-Green-Wells-/greenwells_wellsflow/instance/shopfleet.db'
 
