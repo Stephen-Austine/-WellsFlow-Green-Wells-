@@ -143,6 +143,72 @@ def vehiclesmanagefleet():
                            current_filter=filter_status)
 
 
+# Updated route in app.py
+@app.route("/vehiclesaddnew", methods=['GET', 'POST'])
+@login_required
+def vehiclesaddnew():
+    if request.method == 'POST':
+        # Get form data
+        registration_number = request.form.get('registration_number')
+        fleet_brand = request.form.get('fleet_brand')
+        fleet_model = request.form.get('fleet_model')
+        fleet_category = request.form.get('fleet_category')
+        registration_date = request.form.get('registration_date')
+        fleet_mileage = request.form.get('fleet_mileage')
+        chassis_number = request.form.get('chassis_number')
+        cargo_type = request.form.get('cargo_type')
+        max_capacity = request.form.get('max_capacity')
+        
+        # Default values as per your requirements
+        status = 'Idle'  # Default status is Idle
+        
+        # Get the current logged-in user's ID
+        from flask_login import current_user
+        # Based on your load_user function, the ID is stored in user_id for Users 
+        # and employee_id for Employees
+        employee_id = getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None)
+        
+        # If we still don't have an employee_id, check if it's an employee
+        if not employee_id:
+            # Check if the current user has an employee_id attribute (from Employees table)
+            employee_id = getattr(current_user, 'employee_id', None)
+        
+        # If we still can't find it, we might need to handle this case
+        if not employee_id:
+            flash("Unable to determine employee ID. Please contact administrator.", "danger")
+            return redirect(url_for('vehiclesaddnew'))
+        
+        try:
+            conn = sqlite3.connect(shopfleetdb)
+            cursor = conn.cursor()
+            
+            # Insert new vehicle into Fleet table
+            cursor.execute("""
+                INSERT INTO Fleet (
+                    registration_number, fleet_brand, fleet_model, fleet_category,
+                    registration_date, employee_id, fleet_mileage, chassis_number,
+                    cargo_type, max_capacity, status, last_login
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                registration_number, fleet_brand, fleet_model, fleet_category,
+                registration_date, employee_id, fleet_mileage, chassis_number,
+                cargo_type, max_capacity, status, 0
+            ))
+            
+            conn.commit()
+            conn.close()
+            
+            flash("Vehicle added successfully!", "success")
+            return redirect(url_for('vehiclesmanagefleet'))
+            
+        except Exception as e:
+            flash(f"Error adding vehicle: {str(e)}", "danger")
+            return redirect(url_for('vehiclesaddnew'))
+    
+    # For GET request, no need to fetch employees since it's auto-assigned
+    return render_template("fleet/fleet_extend/vehicles/addnew.html")
+
+
 @app.route("/employees")
 def employees():
     return render_template("fleet/adminside_fleet/employees.html")
