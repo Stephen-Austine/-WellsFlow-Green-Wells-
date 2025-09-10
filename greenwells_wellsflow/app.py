@@ -209,6 +209,180 @@ def vehiclesaddnew():
     return render_template("fleet/fleet_extend/vehicles/addnew.html")
 
 
+@app.route("/manageproduction", methods=['GET', 'POST'])
+@login_required
+def manageproduction():
+    conn = sqlite3.connect(shopfleetdb)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    filter_category = request.args.get('category')
+    filter_status = request.args.get('status')
+
+    if request.method == 'POST':
+        product_id = request.form.get('product_id')
+        new_status = request.form.get('status')
+
+        cursor.execute("UPDATE Products SET status = ? WHERE product_id = ?", (new_status, product_id))
+        conn.commit()
+        flash("Product status updated successfully!", "success")
+
+        redirect_url = url_for('manageproduction')
+        if filter_category:
+            redirect_url += f'?category={filter_category}'
+        elif filter_status:
+            redirect_url += f'?status={filter_status}'
+        return redirect(redirect_url)
+
+    # Build query based on filters
+    query = "SELECT p.*, u.first_name, u.last_name FROM Products p LEFT JOIN Users u ON p.user_id = u.user_id"
+    params = []
+    
+    if filter_category:
+        query += " WHERE p.product_category = ?"
+        params.append(filter_category)
+    elif filter_status:
+        query += " WHERE p.status = ?"
+        params.append(filter_status)
+    
+    query += " ORDER BY p.product_registration DESC"
+    
+    cursor.execute(query, params)
+    products = cursor.fetchall()
+
+    # Get category counts
+    cursor.execute("""
+        SELECT product_category, COUNT(*) as count 
+        FROM Products 
+        GROUP BY product_category
+    """)
+    category_counts = cursor.fetchall()
+    
+    # Get status counts
+    cursor.execute("""
+        SELECT status, COUNT(*) as count 
+        FROM Products 
+        GROUP BY status
+    """)
+    status_counts = cursor.fetchall()
+
+    conn.close()
+
+    return render_template("fleet/fleet_extend/production/manageproduction.html",
+                           products=products,
+                           category_counts=category_counts,
+                           status_counts=status_counts,
+                           current_category=filter_category,
+                           current_status=filter_status)
+
+
+
+import os
+import datetime
+from werkzeug.utils import secure_filename
+
+# Add configuration for file uploads
+UPLOAD_FOLDER = '../-WellsFlow-Green-Wells-/greenwells_wellsflow/static/uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+MAX_FILE_SIZE = 16 * 1024 * 1024  # 16MB max file size
+
+# Make sure the upload folder exists
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# Update this part in your addnewproduction route
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route("/addnewproduction", methods=['GET', 'POST'])
+@login_required
+def addnewproduction():
+    from flask_login import current_user
+    
+    # Update the upload folder path
+    UPLOAD_FOLDER = '../-WellsFlow-Green-Wells-/greenwells_wellsflow/static/uploads'
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+    MAX_FILE_SIZE = 16 * 1024 * 1024  # 16MB max file size
+
+    # Make sure the upload folder exists
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+    def allowed_file(filename):
+        return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    
+    if request.method == 'POST':
+        # Get form data
+        product_name = request.form.get('product_name')
+        product_category = request.form.get('product_category')
+        product_description = request.form.get('product_description')
+        product_quantity = request.form.get('product_quantity')
+        product_cost = request.form.get('product_cost')
+        retail_price = request.form.get('retail_price')
+        product_location = request.form.get('product_location')
+        location_description = request.form.get('location_description', '')
+        
+        # Handle file upload
+        product_image_filename = ''
+        if 'product_image' in request.files:
+            file = request.files['product_image']
+            if file and file.filename != '' and allowed_file(file.filename):
+                # Generate unique filename
+                filename = secure_filename(file.filename)
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_")
+                unique_filename = timestamp + filename
+                file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
+                file.save(file_path)
+                # Store just the filename
+                product_image_filename = unique_filename
+        
+        # Default values
+        status = 'Not sold'
+        product_registration = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Get the current logged-in user's ID
+        user_id = getattr(current_user, 'id', None)
+        if not user_id:
+            for attr in ['user_id', 'employee_id', 'id']:
+                if hasattr(current_user, attr):
+                    user_id = getattr(current_user, attr)
+                    break
+        
+        if not user_id:
+            flash("Unable to determine your user ID. Access denied.", "danger")
+            return redirect(url_for('addnewproduction'))
+        
+        try:
+            conn = sqlite3.connect(shopfleetdb)
+            cursor = conn.cursor()
+            
+            # Insert new product into Products table
+            cursor.execute("""
+                INSERT INTO Products (
+                    product_name, product_category, product_description, product_image,
+                    product_quantity, product_cost, retail_price, user_id,
+                    product_registration, product_location, location_description, status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                product_name, product_category, product_description, product_image_filename,
+                product_quantity, product_cost, retail_price, user_id,
+                product_registration, product_location, location_description, status
+            ))
+            
+            conn.commit()
+            conn.close()
+            
+            flash("Product added successfully!", "success")
+            return redirect(url_for('manageproduction'))
+            
+        except Exception as e:
+            flash(f"Error adding product: {str(e)}", "danger")
+            return redirect(url_for('addnewproduction'))
+    
+    # For GET request
+    return render_template("fleet/fleet_extend/production/addnewproduction.html")
+
+
+
+
 @app.route("/employees")
 def employees():
     return render_template("fleet/adminside_fleet/employees.html")
