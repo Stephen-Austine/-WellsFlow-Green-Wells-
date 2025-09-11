@@ -1,7 +1,21 @@
 {% extends "layout.html" %}
 {% block content %}
-workins production
-<br>
-put metrics here
-<br>
+
+<section class="row">
+    <div class="col-md-6">
+        <button class="btn btn-outline-primary" onclick="location.href = '/manageproduction'">Manage Production</button>
+    
+    </div>
+    <div class="col-md-6">
+        <button class="btn btn-outline-primary" onclick="location.href = '/addnewproduction'">Add Items</button>
+    
+    </div>
+
+    {% block production_content %}
+
+    {% endblock production_content %}
+
+</section>
+
+
 {% endblock %}
