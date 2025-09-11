@@ -43,7 +43,7 @@ def load_user(user_id):
     return None
 
 
-# ✅ Auto-register all Blueprints from routes/
+#  Auto-register all Blueprints from routes/
 register_blueprints(app)
 
 

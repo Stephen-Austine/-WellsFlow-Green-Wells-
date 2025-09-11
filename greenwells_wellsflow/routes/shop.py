@@ -155,3 +155,19 @@ def checkout():
     }
     
     return render_template('checkout.html', order=order)
+
+
+@shop.route('/order_tracking/<int:order_id>', methods = ['POST'])
+def order_tracking(order_id):
+    # Mock order data (later this can come from DB)
+    mock_order = {
+        "id": order_id,
+        "customer": "John Doe",
+        "items": [
+            {"name": "Engine Oil", "qty": 2, "price": 1500},
+            {"name": "Brake Fluid", "qty": 1, "price": 800},
+        ],
+        "status": "Shipped"  # Change this to test: "Placed", "Processing", "Shipped", "Delivered"
+    }
+
+    return render_template("shop/order_tracking.html", order=mock_order)
