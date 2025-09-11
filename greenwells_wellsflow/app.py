@@ -385,7 +385,7 @@ def addnewproduction():
 
 @app.route("/employees")
 def employees():
-    return render_template("fleet/adminside_fleet/employees.html")
+    return render_template("fleet/adminside_fleet/employees/employees.html")
 
 
 @app.route("/production")

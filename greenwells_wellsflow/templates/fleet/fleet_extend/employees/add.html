@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto p-6 max-w-2xl">
+  <!-- Glass Card Wrapper -->
+  <div class="glass-card p-6 rounded-xl">
+    <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">
+      Add New Employee
+    </h3>
+
+    <form method="POST">
+  
+
+      <!-- First Name -->
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">First Name</label>
+        <input 
+          type="text" 
+          name="first_name" 
+          class="w-full p-2 rounded-2xl bg-white/20 backdrop-blur-md border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 text-sm"
+          placeholder="Enter first name"
+          required
+        >
+      </div>
+
+      <!-- Last Name -->
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Last Name</label>
+        <input 
+          type="text" 
+          name="last_name" 
+          class="w-full p-2 rounded-2xl bg-white/20 backdrop-blur-md border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 text-sm"
+          placeholder="Enter last name"
+          required
+        >
+      </div>
+
+      <!-- Email -->
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+        <input 
+          type="email" 
+          name="email" 
+          class="w-full p-2 rounded-2xl bg-white/20 backdrop-blur-md border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 text-sm"
+          placeholder="Enter email"
+          required
+        >
+      </div>
+
+      <!-- Phone Number -->
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Phone Number</label>
+        <input 
+          type="tel" 
+          name="phone_number" 
+          class="w-full p-2 rounded-2xl bg-white/20 backdrop-blur-md border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 text-sm"
+          placeholder="e.g. +254712345678"
+        >
+      </div>
+
+      <!-- Role -->
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
+        <select 
+          name="role" 
+          class="w-full p-2 rounded-2xl bg-white/20 backdrop-blur-md border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 text-sm"
+          required
+        >
+          <option value="">Select Role</option>
+          <option value="Driver">Driver</option>
+          <option value="Product Manager">Product Manager</option>
+          <option value="Admin">Admin</option>
+          <option value="Financer">Financer</option>
+          <option value="Customer Service">Customer Service</option>
+        </select>
+      </div>
+
+      <!-- Location -->
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Location</label>
+        <input 
+          type="text" 
+          name="location" 
+          class="w-full p-2 rounded-2xl bg-white/20 backdrop-blur-md border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 text-sm"
+          placeholder="Enter location (e.g., HQ, Nairobi)"
+          required
+        >
+      </div>
+
+      <!-- Password -->
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+        <input 
+          type="password" 
+          name="password" 
+          class="w-full p-2 rounded-2xl bg-white/20 backdrop-blur-md border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 text-sm"
+          placeholder="Create a password"
+          required
+        >
+      </div>
+
+      <!-- Generate OTP Checkbox -->
+      <div class="mb-5 flex items-center">
+        <input 
+          type="checkbox" 
+          name="generate_otp" 
+          id="generate_otp"
+          class="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+        >
+        <label for="generate_otp" class="text-sm font-medium text-gray-700">
+          Generate OTP for this employee
+        </label>
+      </div>
+
+      <!-- Submit Button -->
+      <div class="flex justify-center">
+        <button type="submit" class="btn-glass px-6 py-2 bg-blue-600 hover:bg-blue-700 text-green-800 font-medium rounded-xl transition whitespace-nowrap">
+          Add Employee
+        </button>
+      </div>
+    </form>
+
+    <!-- Back Link -->
+    <div class="text-center mt-5">
+      <a href="{{ url_for('employees.employees_home') }}" class="text-blue-500 hover:underline text-sm font-medium">
+        ← Back to Employee List
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
