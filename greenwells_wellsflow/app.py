@@ -400,19 +400,59 @@ def employees():
     return render_template("fleet/adminside_fleet/employees/employees.html")
 
 
-@app.route("/production")
-def production():
-    return render_template("fleet/adminside_fleet/production.html")
-
-
 @app.route("/orders")
 def orders():
     return render_template("fleet/adminside_fleet/orders.html")
 
 
-@app.route("/customers")
-def customers():
-    return render_template("fleet/adminside_fleet/customers.html")
+
+# Add this route to your app.py
+@app.route("/customersmanage", methods=['GET', 'POST'])
+@login_required
+def customersmanage():
+    conn = sqlite3.connect(shopfleetdb)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    filter_status = request.args.get('status')
+
+    if request.method == 'POST':
+        user_id = request.form.get('user_id')
+        new_status = request.form.get('status')
+
+        cursor.execute("UPDATE Users SET status = ? WHERE user_id = ?", (new_status, user_id))
+        conn.commit()
+        flash("Customer status updated successfully!", "success")
+
+        redirect_url = url_for('customersmanage')
+        if filter_status:
+            redirect_url += f'?status={filter_status}'
+        return redirect(redirect_url)
+
+    if filter_status:
+        cursor.execute("SELECT * FROM Users WHERE status = ?", (filter_status,))
+    else:
+        cursor.execute("SELECT * FROM Users")
+    customers = cursor.fetchall()
+
+    cursor.execute("""
+        SELECT status, COUNT(*) as count 
+        FROM Users 
+        GROUP BY status
+    """)
+    status_counts = cursor.fetchall()
+
+    # Get total customer count
+    cursor.execute("SELECT COUNT(*) as total FROM Users")
+    total_customers = cursor.fetchone()['total']
+
+    conn.close()
+
+    return render_template("fleet/fleet_extend/customers/managecustomers.html",
+                           customers=customers,
+                           status_counts=status_counts,
+                           current_filter=filter_status,
+                           total_customers=total_customers)
 
 
 @app.route("/finances")
