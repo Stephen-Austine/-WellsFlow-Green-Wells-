@@ -100,6 +100,7 @@ def vehicles():
     return render_template("fleet/adminside_fleet/vehicles.html")
 
 
+# Updated route in app.py
 @app.route("/vehiclesmanagefleet", methods=['GET', 'POST'])
 @login_required
 def vehiclesmanagefleet():
@@ -128,6 +129,7 @@ def vehiclesmanagefleet():
         cursor.execute("SELECT * FROM Fleet")
     fleets = cursor.fetchall()
 
+    # Get status counts
     cursor.execute("""
         SELECT status, COUNT(*) as count 
         FROM Fleet 
@@ -135,12 +137,17 @@ def vehiclesmanagefleet():
     """)
     status_counts = cursor.fetchall()
 
+    # Get total fleet count
+    cursor.execute("SELECT COUNT(*) as total FROM Fleet")
+    total_fleets = cursor.fetchone()['total']
+
     conn.close()
 
     return render_template("fleet/fleet_extend/vehicles/managefleet.html",
                            fleets=fleets,
                            status_counts=status_counts,
-                           current_filter=filter_status)
+                           current_filter=filter_status,
+                           total_fleets=total_fleets)
 
 
 # Updated route in app.py
@@ -209,6 +216,7 @@ def vehiclesaddnew():
     return render_template("fleet/fleet_extend/vehicles/addnew.html")
 
 
+# Updated route in app.py
 @app.route("/manageproduction", methods=['GET', 'POST'])
 @login_required
 def manageproduction():
@@ -266,6 +274,10 @@ def manageproduction():
     """)
     status_counts = cursor.fetchall()
 
+    # Get total product count
+    cursor.execute("SELECT COUNT(*) as total FROM Products")
+    total_products = cursor.fetchone()['total']
+
     conn.close()
 
     return render_template("fleet/fleet_extend/production/manageproduction.html",
@@ -273,8 +285,8 @@ def manageproduction():
                            category_counts=category_counts,
                            status_counts=status_counts,
                            current_category=filter_category,
-                           current_status=filter_status)
-
+                           current_status=filter_status,
+                           total_products=total_products)
 
 
 import os

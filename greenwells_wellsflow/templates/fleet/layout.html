@@ -17,15 +17,8 @@
       background: rgba(255, 255, 255, 0.2);
       border-radius: 15px;
       box-shadow: 0 8px 32px rgba(31, 38, 135, 0.2);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
       border: 1px solid rgba(255, 255, 255, 0.18);
       transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .glass-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 12px 40px rgba(31, 38, 135, 0.3);
     }
 
     /* 🌟 Glass buttons */
@@ -112,9 +105,9 @@
     <div class="col-md-2 glass-card sidebar">
       <ul class="nav flex-column">
         <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
-        <li class="nav-item"><a class="nav-link" href="/vehicles">Fleet</a></li>
+        <li class="nav-item"><a class="nav-link" href="/vehiclesmanagefleet">Fleet</a></li>
         <li class="nav-item"><a class="nav-link" href="/employees">Employees</a></li>
-        <li class="nav-item"><a class="nav-link" href="/production">Production</a></li>
+        <li class="nav-item"><a class="nav-link" href="/manageproduction">Production</a></li>
         <li class="nav-item"><a class="nav-link" href="/orders">Orders</a></li>
         <li class="nav-item"><a class="nav-link" href="/customers">Customers</a></li>
         <li class="nav-item"><a class="nav-link" href="/finances">Finances</a></li>
@@ -153,6 +146,22 @@
         const alert = bootstrap.Alert.getOrCreateInstance(flash);
         alert.close();
       }, 3000);
+    });
+    
+    // Highlight active sidebar link
+    const currentPage = window.location.pathname;
+    const navLinks = document.querySelectorAll('.sidebar .nav-link');
+    
+    navLinks.forEach(link => {
+      // Get the href attribute and remove any trailing slashes for comparison
+      const linkPath = link.getAttribute('href').replace(/\/$/, '');
+      const currentPath = currentPage.replace(/\/$/, '');
+      
+      // Check if the current page matches the link
+      if (currentPath === linkPath || 
+          (linkPath !== '' && currentPath.startsWith(linkPath))) {
+        link.classList.add('active');
+      }
     });
   });
 </script>
