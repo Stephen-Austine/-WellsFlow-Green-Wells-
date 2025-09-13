@@ -102,7 +102,7 @@
                     </div>
                     <div class="col-md-2">
                       <p class="mb-1"><strong>Status:</strong></p>
-                      <span class="badge bg-{% if product['status'] == 'Sold' %}success{% elif product['status'] == 'Not sold' %}primary{% elif product['status'] == 'Out of Stock' %}danger{% else %}secondary{% endif %}">
+                      <span class="badge bg-{% if product['status'] == 'Sold' %}success{% elif product['status'] == 'Not sold' %}primary{% elif product['status'] == 'Out of Stock' %}danger{% elif product['status'] == 'In Stock' %}info{% else %}secondary{% endif %}">
                         {{ product['status'] }}
                       </span>
                     </div>
@@ -143,7 +143,7 @@
                         <p><strong>Storage Location:</strong> {{ product['product_location'] }}</p>
                         <p><strong>Location Description:</strong> {{ product['location_description'] or 'N/A' }}</p>
                         <p><strong>Current Status:</strong> 
-                          <span class="badge bg-{% if product['status'] == 'Sold' %}success{% elif product['status'] == 'Not sold' %}primary{% elif product['status'] == 'Out of Stock' %}danger{% else %}secondary{% endif %}">
+                          <span class="badge bg-{% if product['status'] == 'Sold' %}success{% elif product['status'] == 'Not sold' %}primary{% elif product['status'] == 'Out of Stock' %}danger{% elif product['status'] == 'In Stock' %}info{% else %}secondary{% endif %}">
                             {{ product['status'] }}
                           </span>
                         </p>
@@ -177,6 +177,7 @@
                         <label for="statusSelect{{ product['product_id'] }}" class="form-label"><strong>Change Status:</strong></label>
                         <select class="form-select" id="statusSelect{{ product['product_id'] }}" name="status">
                           <option value="Not sold" {% if product['status'] == 'Not sold' %}selected{% endif %}>Not sold</option>
+                          <option value="In Stock" {% if product['status'] == 'In Stock' %}selected{% endif %}>In Stock</option>
                           <option value="Sold" {% if product['status'] == 'Sold' %}selected{% endif %}>Sold</option>
                           <option value="Out of Stock" {% if product['status'] == 'Out of Stock' %}selected{% endif %}>Out of Stock</option>
                           <option value="Discontinued" {% if product['status'] == 'Discontinued' %}selected{% endif %}>Discontinued</option>

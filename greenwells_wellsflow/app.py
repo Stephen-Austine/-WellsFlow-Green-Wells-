@@ -347,7 +347,7 @@ def addnewproduction():
                 product_image_filename = unique_filename
         
         # Default values
-        status = 'Not sold'
+        status = 'In Stock'  # Default status is In Stock
         product_registration = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         # Get the current logged-in user's ID
