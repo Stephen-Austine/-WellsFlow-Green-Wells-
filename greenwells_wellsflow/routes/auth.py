@@ -1,8 +1,15 @@
 # routes/auth.py
-from flask import Blueprint, render_template, redirect, url_for, flash, request
-from flask_login import login_user, logout_user, login_required
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session
+from flask_login import login_user, logout_user, login_required, current_user
 import sqlite3
 import bcrypt
+import random
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import threading
+import time
+import base64
 
 # Define the database path
 shopfleetdb = '../-WellsFlow-Green-Wells-/greenwells_wellsflow/instance/shopfleet.db'
@@ -12,6 +19,158 @@ auth_bp = Blueprint("auth", __name__, template_folder="../templates/auth")
 
 print("Auth blueprint registered")  # Debug line
 
+# Email configuration (update with your email settings)
+EMAIL_CONFIG = {
+    'smtp_server': 'smtp.gmail.com',  # Change to your SMTP server
+    'smtp_port': 587,
+    'email': 'qazgmr4rls@gmail.com',  # Your email
+    'password': 'pbtf yndj pxvi wgva'   # Your app password
+}
+
+
+def encrypt_otp(otp):
+    """Encrypt OTP using bcrypt for storage"""
+    if not otp:
+        return None
+    return bcrypt.hashpw(otp.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def verify_encrypted_otp(plain_otp, encrypted_otp):
+    """Verify plain OTP against encrypted OTP"""
+    if not plain_otp or not encrypted_otp:
+        return False
+    return bcrypt.checkpw(plain_otp.encode('utf-8'), encrypted_otp.encode('utf-8'))
+
+def generate_otp():
+    """Generate 6-digit OTP"""
+    return str(random.randint(100000, 999999))
+
+def send_otp_email(email, otp, name):
+    """Send OTP via email"""
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = EMAIL_CONFIG['email']
+        msg['To'] = email
+        msg['Subject'] = 'GreenWells - OTP Verification'
+
+        body = f"""
+        Hello {name},
+        
+        Your OTP code for login is: {otp}
+        
+        This code will expire in 90 seconds.
+        
+        If you didn't request this code, please ignore this email.
+        
+        Best regards,
+        GreenWells Team
+        """
+
+        msg.attach(MIMEText(body, 'plain'))
+
+        server = smtplib.SMTP(EMAIL_CONFIG['smtp_server'], EMAIL_CONFIG['smtp_port'])
+        server.starttls()
+        server.login(EMAIL_CONFIG['email'], EMAIL_CONFIG['password'])
+        server.send_message(msg)
+        server.quit()
+        
+        return True
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        return False
+
+def store_otp_in_database(employee_id, otp):
+    """Store encrypted OTP and timestamp in database for employee"""
+    conn = sqlite3.connect(shopfleetdb)
+    cursor = conn.cursor()
+    
+    # Encrypt the OTP before storing
+    encrypted_otp = encrypt_otp(otp) if otp else None
+    timestamp = time.time() if otp else None
+    
+    cursor.execute("""
+        UPDATE Employees 
+        SET otp = ?, otp_timestamp = ? 
+        WHERE employee_id = ?
+    """, (encrypted_otp, timestamp, employee_id))
+    
+    conn.commit()
+    conn.close()
+
+def is_otp_valid(employee_id, entered_otp):
+    """Check if OTP is valid and not expired for employee"""
+    conn = sqlite3.connect(shopfleetdb)
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT otp, otp_timestamp 
+        FROM Employees 
+        WHERE employee_id = ?
+    """, (employee_id,))
+    
+    result = cursor.fetchone()
+    conn.close()
+    
+    if not result:
+        return False
+    
+    stored_otp, otp_timestamp = result
+    
+    if not stored_otp or not otp_timestamp:
+        return False
+    
+    # Verify the OTP using bcrypt
+    if not verify_encrypted_otp(entered_otp, stored_otp):
+        return False
+    
+    current_time = time.time()
+    
+    # 90 seconds expiration
+    if current_time - otp_timestamp > 90:
+        # Clear expired OTP
+        clear_otp(employee_id)
+        return False
+    
+    return True
+
+def clear_otp(employee_id):
+    """Clear OTP from database"""
+    conn = sqlite3.connect(shopfleetdb)
+    cursor = conn.cursor()
+    
+    # Use empty string instead of NULL to avoid NOT NULL constraint
+    cursor.execute("""
+        UPDATE Employees 
+        SET otp = '', otp_timestamp = 0 
+        WHERE employee_id = ?
+    """, (employee_id,))
+    
+    conn.commit()
+    conn.close()
+
+def get_pending_employee(employee_id):
+    """Get employee data for pending login"""
+    conn = sqlite3.connect(shopfleetdb)
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT employee_id, first_name, last_name, email, role, username 
+        FROM Employees 
+        WHERE employee_id = ?
+    """, (employee_id,))
+    
+    result = cursor.fetchone()
+    conn.close()
+    
+    if result:
+        return {
+            'employee_id': result[0],
+            'first_name': result[1],
+            'last_name': result[2],
+            'email': result[3],
+            'role': result[4],
+            'username': result[5]
+        }
+    return None
 
 # --- Signup ---
 @auth_bp.route("/signup", methods=["GET", "POST"])
@@ -64,7 +223,6 @@ def signup():
 
     return render_template("auth/signup.html", form=form)
 
-
 # --- Login ---
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
@@ -80,43 +238,54 @@ def login():
         print(f"Attempting login for email: {email}")  # Debug line
 
         # Check Employees first (admins should be here)
-        cursor.execute("SELECT employee_id, password, role, first_name, last_name, username FROM Employees WHERE email = ?", (email,))
+        cursor.execute("SELECT employee_id, password, role, email, first_name, last_name, username FROM Employees WHERE email = ?", (email,))
         employee = cursor.fetchone()
         
         print(f"Employee result: {employee}")  # Debug line
 
         if employee:
-            employee_id, stored_password, role, first_name, last_name, username = employee
+            employee_id, stored_password, role, emp_email, first_name, last_name, username = employee
             print(f"Found employee: {first_name} {last_name}, username: {username}, role: {role}")  # Debug line
             if bcrypt.checkpw(password.encode("utf-8"), stored_password.encode("utf-8")):
-                from user_object import UserObject
-                user = UserObject(employee_id, first_name, last_name, email, role, username)
-                login_user(user)
-                flash(f"Logged in successfully as {role}!", "success")
+                # Generate and send OTP
+                otp = generate_otp()
+                print(f"Generated OTP: {otp}")  # Debug line
+                
+                # Store encrypted OTP in database
+                store_otp_in_database(employee_id, otp)
+                
+                # Send OTP in background thread
+                def send_email():
+                    send_otp_email(emp_email, otp, f"{first_name} {last_name}")
+                
+                email_thread = threading.Thread(target=send_email)
+                email_thread.start()
+                
                 conn.close()
-                # Role-based redirect
-                if role.lower() == "admin":
-                    return redirect(url_for("dashboard"))
-                else:
-                    return redirect(url_for("home"))
+                
+                # Store employee_id in session for OTP verification
+                session['pending_employee_id'] = employee_id
+                
+                flash(f"OTP sent to your email. Please check your inbox.", "info")
+                return redirect(url_for("auth.verify_otp"))
             else:
                 flash("Invalid email or password.", "danger")
                 conn.close()
                 return render_template("auth/login.html", form=form)
 
         # If not employee, check Users table
-        cursor.execute("SELECT user_id, password, first_name, last_name FROM Users WHERE email = ?", (email,))
+        cursor.execute("SELECT user_id, password, first_name, last_name, email FROM Users WHERE email = ?", (email,))
         user = cursor.fetchone()
         conn.close()
         
         print(f"User result: {user}")  # Debug line
 
         if user:
-            user_id, stored_password, first_name, last_name = user
+            user_id, stored_password, first_name, last_name, user_email = user
             print(f"Found user: {first_name} {last_name}")  # Debug line
             if bcrypt.checkpw(password.encode("utf-8"), stored_password.encode("utf-8")):
                 from user_object import UserObject
-                user_obj = UserObject(user_id, first_name, last_name, email, "customer")
+                user_obj = UserObject(user_id, first_name, last_name, user_email, "customer")
                 login_user(user_obj)
                 flash("Logged in successfully!", "success")
                 return redirect(url_for("shop.shop_home"))
@@ -127,21 +296,149 @@ def login():
 
     return render_template("auth/login.html", form=form)
 
+# --- OTP Verification ---
+@auth_bp.route("/verify-otp", methods=["GET", "POST"])
+def verify_otp():
+    if 'pending_employee_id' not in session:
+        flash("No pending login. Please login first.", "warning")
+        return redirect(url_for("auth.login"))
+    
+    employee_id = session['pending_employee_id']
+    
+    # Get employee data
+    employee_data = get_pending_employee(employee_id)
+    if not employee_data:
+        flash("Invalid session. Please login again.", "danger")
+        session.pop('pending_employee_id', None)
+        return redirect(url_for("auth.login"))
+    
+    if request.method == "POST":
+        entered_otp = request.form.get("otp")
+        
+        if is_otp_valid(employee_id, entered_otp):
+            # OTP is correct, login the user
+            from user_object import UserObject
+            user = UserObject(
+                employee_data['employee_id'],
+                employee_data['first_name'],
+                employee_data['last_name'],
+                employee_data['email'],
+                employee_data['role'],
+                employee_data['username']
+            )
+            login_user(user)
+            
+            # Clear OTP from database
+            clear_otp(employee_id)
+            
+            # Clear session
+            session.pop('pending_employee_id', None)
+            
+            flash(f"Logged in successfully as {employee_data['role']}!", "success")
+            
+            # Role-based redirect
+            if employee_data['role'].lower() == "admin":
+                return redirect(url_for("dashboard"))
+            else:
+                return redirect(url_for("home"))
+        else:
+            flash("Invalid or expired OTP. Please try again.", "danger")
+    
+    # Check if there's a pending OTP (GET request)
+    conn = sqlite3.connect(shopfleetdb)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT otp_timestamp 
+        FROM Employees 
+        WHERE employee_id = ?
+    """, (employee_id,))
+    result = cursor.fetchone()
+    conn.close()
+    
+    if result and result[0]:
+        otp_timestamp = result[0]
+        current_time = time.time()
+        if current_time - otp_timestamp > 90:
+            # OTP expired
+            clear_otp(employee_id)
+            session.pop('pending_employee_id', None)
+            flash("OTP has expired. Please login again.", "danger")
+            return redirect(url_for("auth.login"))
+    elif not result or not result[0]:
+        # No OTP found
+        session.pop('pending_employee_id', None)
+        flash("No pending OTP. Please login again.", "danger")
+        return redirect(url_for("auth.login"))
+    
+    return render_template("auth/otp_verify.html")
+
+# --- Resend OTP ---
+@auth_bp.route("/resend-otp")
+def resend_otp():
+    if 'pending_employee_id' not in session:
+        flash("No pending login. Please login first.", "warning")
+        return redirect(url_for("auth.login"))
+    
+    employee_id = session['pending_employee_id']
+    
+    # Get employee data
+    employee_data = get_pending_employee(employee_id)
+    if not employee_data:
+        flash("Invalid session. Please login again.", "danger")
+        session.pop('pending_employee_id', None)
+        return redirect(url_for("auth.login"))
+    
+    # Check if there's an existing OTP and if it's still valid
+    conn = sqlite3.connect(shopfleetdb)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT otp_timestamp 
+        FROM Employees 
+        WHERE employee_id = ?
+    """, (employee_id,))
+    result = cursor.fetchone()
+    conn.close()
+    
+    if result and result[0]:
+        otp_timestamp = result[0]
+        current_time = time.time()
+        if current_time - otp_timestamp <= 90:
+            flash("OTP is still valid. Please check your email.", "info")
+            return redirect(url_for("auth.verify_otp"))
+    
+    # Generate new OTP
+    otp = generate_otp()
+    
+    # Store encrypted OTP in database
+    store_otp_in_database(employee_id, otp)
+    
+    # Send OTP in background thread
+    def send_email():
+        send_otp_email(employee_data['email'], otp, f"{employee_data['first_name']} {employee_data['last_name']}")
+    
+    email_thread = threading.Thread(target=send_email)
+    email_thread.start()
+    
+    flash("New OTP sent to your email.", "info")
+    return redirect(url_for("auth.verify_otp"))
 
 # --- Logout ---
 @auth_bp.route("/logout")
 @login_required
 def logout():
+    # Clear any pending OTP if exists
+    if 'pending_employee_id' in session:
+        clear_otp(session['pending_employee_id'])
+        session.pop('pending_employee_id', None)
+    
     logout_user()
     flash("You have been logged out.", "info")
     return redirect(url_for("auth.login"))
-
 
 # --- Test route (debugging) ---
 @auth_bp.route("/test")
 def test():
     return "Auth routes are working!"
-
 
 # --- Forgot Password ---
 @auth_bp.route("/forgot-password", methods=["GET", "POST"])
