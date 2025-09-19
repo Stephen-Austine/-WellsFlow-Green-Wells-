@@ -98,6 +98,11 @@ def add_to_cart(product_id):
 
 @shop.route('/cart')
 def cart():
+    # Check if user is authenticated to view cart
+    if 'cart' not in session or not session['cart']:
+        flash('Your cart is empty.', 'info')
+        return redirect(url_for('shop.shop_home'))
+    
     # Use session-based cart
     cart = session.get("cart", [])
     subtotal = sum(item['price'] * item.get('quantity', 1) for item in cart)
@@ -130,16 +135,40 @@ def clear_cart():
     return redirect(url_for('shop.shop_home'))
 
 @shop.route('/checkout', methods=['GET', 'POST'])
+@login_required  # Require login to checkout
 def checkout():
     cart = session.get("cart", [])
     if not cart:
         flash('Your cart is empty.', 'danger')
         return redirect(url_for('shop.shop_home'))
     
+    # Get user ID from current user
+    user_id = getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None)
+    if not user_id:
+        flash("Unable to identify user. Please log in again.", "danger")
+        return redirect(url_for('auth.login'))
+    
     if request.method == 'POST':
-        # For now, just clear the cart on "checkout"
-        session.pop("cart", None)
-        flash('Order placed successfully!', 'success')
+        conn = get_db_connection()
+        try:
+            # Save cart items to database with user ID
+            for item in cart:
+                conn.execute("""
+                    INSERT INTO Cart (product_id, user_id, status) 
+                    VALUES (?, ?, ?)
+                """, (item['id'], user_id, 'Pending'))
+            
+            conn.commit()
+            
+            # Clear session cart after saving to DB
+            session.pop("cart", None)
+            flash('Order placed successfully!', 'success')
+        except Exception as e:
+            conn.rollback()
+            flash(f'Error processing order: {str(e)}', 'danger')
+        finally:
+            conn.close()
+        
         return redirect(url_for('shop.shop_home'))
     
     # Display checkout page

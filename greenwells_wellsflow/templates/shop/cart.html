@@ -79,7 +79,12 @@
       <form method="POST" action="{{ url_for('shop.clear_cart') }}" class="d-inline">
         <button type="submit" class="btn btn-warning">Clear Cart</button>
       </form>
-      <a href="{{ url_for('shop.checkout') }}" class="btn btn-success">Proceed to Checkout</a>
+      
+      {% if current_user.is_authenticated %}
+        <a href="{{ url_for('shop.checkout') }}" class="btn btn-success">Proceed to Checkout</a>
+      {% else %}
+        <a href="{{ url_for('auth.login') }}?next={{ url_for('shop.cart') }}" class="btn btn-primary">Login to Checkout</a>
+      {% endif %}
     </div>
   </div>
   {% else %}
