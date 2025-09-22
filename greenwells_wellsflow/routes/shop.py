@@ -65,7 +65,10 @@ def add_to_cart(product_id):
         product = conn.execute('SELECT * FROM Products WHERE product_id = ? AND status = "Not sold"', 
                              (product_id,)).fetchone()
         if product:
-            # Use session cart for all users
+            # Get user ID if user is logged in
+            user_id = getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None)
+            
+            # Use session cart for all users (both logged in and guests)
             cart = session.get("cart", [])
             
             # Check if product already in cart
@@ -135,43 +138,98 @@ def clear_cart():
     return redirect(url_for('shop.shop_home'))
 
 @shop.route('/checkout', methods=['GET', 'POST'])
-@login_required  # Require login to checkout
+@login_required
 def checkout():
     cart = session.get("cart", [])
+    
     if not cart:
         flash('Your cart is empty.', 'danger')
         return redirect(url_for('shop.shop_home'))
     
     # Get user ID from current user
     user_id = getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None)
-    if not user_id:
-        flash("Unable to identify user. Please log in again.", "danger")
-        return redirect(url_for('auth.login'))
     
     if request.method == 'POST':
-        conn = get_db_connection()
         try:
-            # Save cart items to database with user ID
+            conn = get_db_connection()
+            
+            # Get customer location from database
+            customer_info = conn.execute("""
+                SELECT location FROM Users WHERE user_id = ?
+            """, (user_id,)).fetchone()
+            
+            customer_location = customer_info['location'] if customer_info else 'Unknown Location'
+            
+            # Create a detailed cart summary with product info for internal use
+            cart_details = []
+            
+            # Get product details for each item in cart
             for item in cart:
-                conn.execute("""
-                    INSERT INTO Cart (product_id, user_id, status) 
-                    VALUES (?, ?, ?)
-                """, (item['id'], user_id, 'Pending'))
+                quantity = item.get('quantity', 1)
+                
+                # Get product location from database
+                product_info = conn.execute("""
+                    SELECT product_location FROM Products WHERE product_id = ?
+                """, (item['id'],)).fetchone()
+                
+                location = product_info['product_location'] if product_info else 'Unknown'
+                
+                # Create detailed item info
+                item_info = {
+                    'id': item['id'],
+                    'name': item['name'],
+                    'quantity': quantity,
+                    'location': location
+                }
+                cart_details.append(item_info)
+            
+            # Create detailed cart summary string for internal reference (store in cart status)
+            cart_summary_items = []
+            for item in cart_details:
+                cart_summary_items.append(f"{item['name']} (ID: {item['id']}) x{item['quantity']} - Location: {item['location']}")
+            
+            cart_summary_str = "; ".join(cart_summary_items)
+            
+            # Create main cart entry
+            cursor = conn.execute("""
+                INSERT INTO Cart (product_id, user_id, status) 
+                VALUES (?, ?, ?)
+            """, (cart[0]['id'], user_id, f"Order_Items:{cart_summary_str}"))
+            cart_id = cursor.lastrowid
+            
+            # Create order entry - SET product_destination to CUSTOMER LOCATION
+            order_cursor = conn.execute("""
+                INSERT INTO Orders (cart_id, employee_id, fleet_id, status, product_destination, product_arrival, otp, otp_timestamp, order_timestamp) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                cart_id, 
+                0,  # employee_id = 0 means not processed yet
+                0,  # fleet_id = 0 means not assigned yet
+                'Stage 1',  # Default status is Stage 1
+                customer_location,  # SET TO CUSTOMER LOCATION - THIS IS THE DESTINATION
+                0.0,  # product_arrival
+                'No OTP',  # otp
+                0.0,  # otp_timestamp
+                datetime.now().timestamp()  # order_timestamp
+            ))
+            order_id = order_cursor.lastrowid
             
             conn.commit()
-            
-            # Clear session cart after saving to DB
-            session.pop("cart", None)
-            flash('Order placed successfully!', 'success')
-        except Exception as e:
-            conn.rollback()
-            flash(f'Error processing order: {str(e)}', 'danger')
-        finally:
             conn.close()
+            
+            # Clear session cart
+            session.pop("cart", None)
+            flash('Order placed successfully! Your order is now in Stage 1 and being processed.', 'success')
+            
+        except Exception as e:
+            if 'conn' in locals():
+                conn.rollback()
+                conn.close()
+            flash(f'Error processing order: {str(e)}', 'danger')
         
         return redirect(url_for('shop.shop_home'))
     
-    # Display checkout page
+    # Display checkout page (GET request)
     subtotal = sum(item['price'] * item.get('quantity', 1) for item in cart)
     tax = subtotal * 0.16
     total = subtotal + tax

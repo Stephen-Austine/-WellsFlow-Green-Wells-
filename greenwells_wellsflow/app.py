@@ -466,42 +466,133 @@ def ordersmanage():
     filter_status = request.args.get('status')
 
     if request.method == 'POST':
-        user_id = request.form.get('user_id')
+        order_id = request.form.get('order_id')
         new_status = request.form.get('status')
 
-        cursor.execute("UPDATE Users SET status = ? WHERE user_id = ?", (new_status, user_id))
+        cursor.execute("UPDATE Orders SET status = ? WHERE order_id = ?", (new_status, order_id))
         conn.commit()
-        flash("Customer status updated successfully!", "success")
+        flash("Order status updated successfully!", "success")
 
-        redirect_url = url_for('customersmanage')
+        redirect_url = url_for('ordersmanage')
         if filter_status:
             redirect_url += f'?status={filter_status}'
         return redirect(redirect_url)
 
+    # Fetch orders with related information
     if filter_status:
-        cursor.execute("SELECT * FROM Users WHERE status = ?", (filter_status,))
+        cursor.execute("""
+            SELECT o.*, 
+                   u.first_name as customer_first_name, 
+                   u.last_name as customer_last_name,
+                   u.email as customer_email,
+                   u.location as customer_location,
+                   e.first_name as employee_first_name, 
+                   e.last_name as employee_last_name,
+                   f.registration_number as fleet_registration,
+                   c.status as cart_status
+            FROM Orders o
+            LEFT JOIN Cart c ON o.cart_id = c.cart_id
+            LEFT JOIN Users u ON c.user_id = u.user_id
+            LEFT JOIN Employees e ON o.employee_id = e.employee_id
+            LEFT JOIN Fleet f ON o.fleet_id = f.fleet_id
+            WHERE o.status = ?
+            ORDER BY o.order_timestamp DESC
+        """, (filter_status,))
     else:
-        cursor.execute("SELECT * FROM Users")
-    customers = cursor.fetchall()
+        cursor.execute("""
+            SELECT o.*, 
+                   u.first_name as customer_first_name, 
+                   u.last_name as customer_last_name,
+                   u.email as customer_email,
+                   u.location as customer_location,
+                   e.first_name as employee_first_name, 
+                   e.last_name as employee_last_name,
+                   f.registration_number as fleet_registration,
+                   c.status as cart_status
+            FROM Orders o
+            LEFT JOIN Cart c ON o.cart_id = c.cart_id
+            LEFT JOIN Users u ON c.user_id = u.user_id
+            LEFT JOIN Employees e ON o.employee_id = e.employee_id
+            LEFT JOIN Fleet f ON o.fleet_id = f.fleet_id
+            ORDER BY o.order_timestamp DESC
+        """)
+    
+    orders = cursor.fetchall()
 
+    # Process orders to extract detailed cart information
+    processed_orders = []
+    for order in orders:
+        order_dict = dict(order)
+        
+        # Parse cart items from cart status (where we stored the detailed info)
+        cart_status = order_dict.get('cart_status', '')
+        parsed_items = []
+        
+        # Extract cart items from cart status
+        if 'Order_Items:' in cart_status:
+            try:
+                cart_details_str = cart_status.split('Order_Items:')[1]
+                items = cart_details_str.split('; ')
+                for item in items:
+                    # Parse: "Product Name (ID: 123) x2 - Location: Warehouse A"
+                    parsed_item = {
+                        'name': 'Unknown',
+                        'id': 'Unknown',
+                        'quantity': '1',
+                        'location': 'Unknown'
+                    }
+                    
+                    try:
+                        # Extract name
+                        if ' (ID: ' in item:
+                            name_part = item.split(' (ID: ')[0]
+                            parsed_item['name'] = name_part
+                        
+                        # Extract ID
+                        if ' (ID: ' in item and ') x' in item:
+                            id_part = item.split(' (ID: ')[1].split(') x')[0]
+                            parsed_item['id'] = id_part
+                        
+                        # Extract quantity and location
+                        if ') x' in item and ' - Location: ' in item:
+                            qty_loc_part = item.split(') x')[1]
+                            if ' - Location: ' in qty_loc_part:
+                                qty_part = qty_loc_part.split(' - Location: ')[0]
+                                loc_part = qty_loc_part.split(' - Location: ')[1]
+                                parsed_item['quantity'] = qty_part
+                                parsed_item['location'] = loc_part
+                            else:
+                                parsed_item['quantity'] = qty_loc_part
+                    except:
+                        # If parsing fails, use the raw item
+                        parsed_item['name'] = item
+                    
+                    parsed_items.append(parsed_item)
+            except:
+                pass
+        
+        order_dict['parsed_items'] = parsed_items
+        processed_orders.append(order_dict)
+
+    # Get status counts
     cursor.execute("""
         SELECT status, COUNT(*) as count 
-        FROM Users 
+        FROM Orders 
         GROUP BY status
     """)
     status_counts = cursor.fetchall()
 
-    # Get total customer count
-    cursor.execute("SELECT COUNT(*) as total FROM Users")
-    total_customers = cursor.fetchone()['total']
+    # Get total orders count
+    cursor.execute("SELECT COUNT(*) as total FROM Orders")
+    total_orders = cursor.fetchone()['total']
 
     conn.close()
 
-    return render_template("fleet/fleet_extend/customers/managecustomers.html",
-                           customers=customers,
+    return render_template("fleet/fleet_extend/orders/manageorders.html",
+                           orders=processed_orders,
                            status_counts=status_counts,
                            current_filter=filter_status,
-                           total_customers=total_customers)
+                           total_orders=total_orders)
 
 
 @app.route("/finances")
