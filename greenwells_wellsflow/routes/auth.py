@@ -42,40 +42,46 @@ def verify_encrypted_otp(plain_otp, encrypted_otp):
 
 def generate_otp():
     """Generate 6-digit OTP"""
-    return str(random.randint(100000, 999999))
+    # return str(random.randint(100000, 999999))
+    return "123456"  # Temporary fixed OTP for testing
 
 def send_otp_email(email, otp, name):
     """Send OTP via email"""
     try:
-        msg = MIMEMultipart()
-        msg['From'] = EMAIL_CONFIG['email']
-        msg['To'] = email
-        msg['Subject'] = 'GreenWells - OTP Verification'
+        pass
+    #     msg = MIMEMultipart()
+    #     msg['From'] = EMAIL_CONFIG['email']
+    #     msg['To'] = email
+    #     msg['Subject'] = 'GreenWells - OTP Verification'
 
-        body = f"""
-        Hello {name},
+    #     body = f"""
+    #     Hello {name},
         
-        Your OTP code for login is: {otp}
+    #     Your OTP code for login is: {otp}
         
-        This code will expire in 90 seconds.
+    #     This code will expire in 90 seconds.
         
-        If you didn't request this code, please ignore this email.
+    #     If you didn't request this code, please ignore this email.
         
-        Best regards,
-        GreenWells Team
-        """
+    #     Best regards,
+    #     GreenWells Team
+    #     """
 
-        msg.attach(MIMEText(body, 'plain'))
+    #     msg.attach(MIMEText(body, 'plain'))
 
-        server = smtplib.SMTP(EMAIL_CONFIG['smtp_server'], EMAIL_CONFIG['smtp_port'])
-        server.starttls()
-        server.login(EMAIL_CONFIG['email'], EMAIL_CONFIG['password'])
-        server.send_message(msg)
-        server.quit()
+    #     server = smtplib.SMTP(EMAIL_CONFIG['smtp_server'], EMAIL_CONFIG['smtp_port'])
+    #     server.starttls()
+    #     server.login(EMAIL_CONFIG['email'], EMAIL_CONFIG['password'])
+    #     server.send_message(msg)
+    #     server.quit()
         
-        return True
+    #     return True
     except Exception as e:
         print(f"Error sending email: {e}")
+        email = "test mail"
+        otp = "123456"
+        name = "Test User"
+        print(f"Temporary OTP for {email}: {otp} {name}")  # Debug line
         return False
 
 def store_otp_in_database(employee_id, otp):
