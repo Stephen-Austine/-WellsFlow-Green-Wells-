@@ -159,7 +159,7 @@ def get_pending_employee(employee_id):
     cursor = conn.cursor()
     
     cursor.execute("""
-        SELECT employee_id, first_name, last_name, email, role, username 
+        SELECT employee_id, first_name, last_name, email, role  
         FROM Employees 
         WHERE employee_id = ?
     """, (employee_id,))
@@ -173,8 +173,7 @@ def get_pending_employee(employee_id):
             'first_name': result[1],
             'last_name': result[2],
             'email': result[3],
-            'role': result[4],
-            'username': result[5]
+            'role': result[4]
         }
     return None
 
@@ -244,14 +243,14 @@ def login():
         print(f"Attempting login for email: {email}")  # Debug line
 
         # Check Employees first (admins should be here)
-        cursor.execute("SELECT employee_id, password, role, email, first_name, last_name, username FROM Employees WHERE email = ?", (email,))
+        cursor.execute("SELECT employee_id, password, role, email, first_name, last_name FROM Employees WHERE email = ?", (email,))
         employee = cursor.fetchone()
         
         print(f"Employee result: {employee}")  # Debug line
 
         if employee:
-            employee_id, stored_password, role, emp_email, first_name, last_name, username = employee
-            print(f"Found employee: {first_name} {last_name}, username: {username}, role: {role}")  # Debug line
+            employee_id, stored_password, role, emp_email, first_name, last_name,  = employee
+            print(f"Found employee: {first_name} {last_name}, role: {role}")  # Debug line
             if bcrypt.checkpw(password.encode("utf-8"), stored_password.encode("utf-8")):
                 # Generate and send OTP
                 otp = generate_otp()
@@ -329,8 +328,7 @@ def verify_otp():
                 employee_data['first_name'],
                 employee_data['last_name'],
                 employee_data['email'],
-                employee_data['role'],
-                employee_data['username']
+                employee_data['role']
             )
             login_user(user)
             
@@ -342,11 +340,21 @@ def verify_otp():
             
             flash(f"Logged in successfully as {employee_data['role']}!", "success")
             
-            # Role-based redirect
-            if employee_data['role'].lower() == "admin":
+            # Role-based redirect with better user experience
+            role = employee_data['role'].lower()
+            if role == "admin":
                 return redirect(url_for("dashboard"))
+            elif role in ["fleetmanager", "driver"]:
+                return redirect(url_for("vehicles"))
+            elif role == "productmanager":
+                return redirect(url_for("manageproduction"))
+            elif role == "customerservice":
+                return redirect(url_for("customersmanage"))
+            elif role == "financer":
+                return redirect(url_for("finances"))
             else:
-                return redirect(url_for("home"))
+                # Default redirect for unknown roles
+                return redirect(url_for("dashboard"))
         else:
             flash("Invalid or expired OTP. Please try again.", "danger")
     

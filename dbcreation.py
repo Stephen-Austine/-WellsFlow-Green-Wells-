@@ -53,6 +53,7 @@ roles = {
     "Admin": 2,
     "Financer": 3,
     "CustomerService": 3,
+    "FleetManager": 2
 }
 
 employee_id = BASE_EMPLOYEE + 2

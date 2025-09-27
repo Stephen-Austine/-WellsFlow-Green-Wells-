@@ -1,6 +1,6 @@
-{% extends "adminside_fleet/production.html" %}
+{% extends "adminside_fleet/adminlayout.html" %}
 
-{% block production_content %}
+{% block content %}
 <div class="container">
     <div class="row justify-content-center">
         <div class="col-md-8">
@@ -86,7 +86,7 @@
                         </div>
 
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <a href="{{ url_for('production') }}" class="btn btn-secondary me-md-2">
+                            <a href="{{ url_for('manageproduction') }}" class="btn btn-secondary me-md-2">
                                 <i class="fas fa-arrow-left"></i> Cancel
                             </a>
                             <button type="submit" class="btn btn-success">
@@ -165,4 +165,4 @@
         }
     });
 </script>
-{% endblock production_content %}
+{% endblock %}

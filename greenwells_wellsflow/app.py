@@ -1,8 +1,54 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
-from flask_login import LoginManager, login_required
+from flask_login import LoginManager, login_required, current_user
 import sqlite3
 from user_object import UserObject
 from routes import register_blueprints  # ✅ auto-blueprint loader
+from functools import wraps
+
+# Add the role_required decorator
+def role_required(allowed_roles):
+    """
+    Decorator to check if the current user has the required role
+    allowed_roles: list of allowed roles or a single role string
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not current_user.is_authenticated:
+                flash('Please log in to access this page.', 'warning')
+                return redirect(url_for('auth.login'))
+            
+            if not hasattr(current_user, 'role'):
+                flash('Access denied: Role information not available.', 'danger')
+                return redirect(url_for('home'))
+            
+            user_role = current_user.role
+            
+            # Convert single role to list for consistent checking
+            roles_to_check = allowed_roles if isinstance(allowed_roles, list) else [allowed_roles]
+            
+            if user_role not in roles_to_check:
+                flash(f'Access denied: You need {", ".join(roles_to_check)} role(s) to access this page.', 'danger')
+                
+                # Redirect based on user's role to avoid infinite loops
+                role = user_role.lower()
+                if role == "admin":
+                    return redirect(url_for("dashboard"))
+                elif role in ["FleetManager", "Driver"]:
+                    return redirect(url_for("vehiclesmanagefleet"))
+                elif role == "Productmanager":
+                    return redirect(url_for("manageproduction"))
+                elif role == "Customerservice":
+                    return redirect(url_for("customersmanage"))
+                elif role == "Financer":
+                    return redirect(url_for("finances"))
+                else:
+                    # Default redirect for unknown roles or customer
+                    return redirect(url_for("home"))
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
 
 # Initialize app
 app = Flask(__name__)
@@ -32,13 +78,13 @@ def load_user(user_id):
         return UserObject(row['user_id'], row['first_name'], row['last_name'], row['email'], row['role'])
 
     cursor.execute(
-        "SELECT employee_id, first_name, last_name, email, role, username FROM Employees WHERE employee_id = ?",
+        "SELECT employee_id, first_name, last_name, email, role FROM Employees WHERE employee_id = ?",
         (user_id,),
     )
     row = cursor.fetchone()
     conn.close()
     if row:
-        return UserObject(row['employee_id'], row['first_name'], row['last_name'], row['email'], row['role'], row['username'])
+        return UserObject(row['employee_id'], row['first_name'], row['last_name'], row['email'], row['role'])
 
     return None
 
@@ -79,11 +125,11 @@ def debug_all_users():
         result += f"<li>ID: {user[0]}, Name: {user[1]} {user[2]}, Email: {user[3]}</li>"
     result += "</ul>"
 
-    cursor.execute("SELECT employee_id, first_name, last_name, username, email, role FROM Employees")
+    cursor.execute("SELECT employee_id, first_name, last_name, email, role FROM Employees")
     employees = cursor.fetchall()
     result += "<h3>Employees Table:</h3><ul>"
     for emp in employees:
-        result += f"<li>ID: {emp[0]}, Name: {emp[1]} {emp[2]}, Username: {emp[3]}, Email: {emp[4]}, Role: {emp[5]}</li>"
+        result += f"<li>ID: {emp[0]}, Name: {emp[1]} {emp[2]}, Email: {emp[3]}, Role: {emp[4]}</li>"
     result += "</ul>"
 
     conn.close()
@@ -91,18 +137,20 @@ def debug_all_users():
 
 
 @app.route("/dashboard")
+@role_required(['Admin'])
 def dashboard():
     return render_template("fleet/adminside_fleet/dashboard.html")
 
 
 @app.route("/vehicles")
+@role_required(['FleetManager', 'Admin', 'Driver'])
 def vehicles():
     return render_template("fleet/adminside_fleet/vehicles.html")
 
 
 # Updated route in app.py
 @app.route("/vehiclesmanagefleet", methods=['GET', 'POST'])
-@login_required
+@role_required(['FleetManager', 'Admin', 'Driver'])
 def vehiclesmanagefleet():
     conn = sqlite3.connect(shopfleetdb)
     conn.row_factory = sqlite3.Row
@@ -152,7 +200,7 @@ def vehiclesmanagefleet():
 
 # Updated route in app.py
 @app.route("/vehiclesaddnew", methods=['GET', 'POST'])
-@login_required
+@role_required(['FleetManager', 'Admin'])
 def vehiclesaddnew():
     if request.method == 'POST':
         # Get form data
@@ -170,7 +218,6 @@ def vehiclesaddnew():
         status = 'Idle'  # Default status is Idle
         
         # Get the current logged-in user's ID
-        from flask_login import current_user
         # Based on your load_user function, the ID is stored in user_id for Users 
         # and employee_id for Employees
         employee_id = getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None)
@@ -218,7 +265,7 @@ def vehiclesaddnew():
 
 # Updated route in app.py
 @app.route("/manageproduction", methods=['GET', 'POST'])
-@login_required
+@role_required(['ProductManager', 'Admin'])
 def manageproduction():
     conn = sqlite3.connect(shopfleetdb)
     conn.row_factory = sqlite3.Row
@@ -306,10 +353,8 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route("/addnewproduction", methods=['GET', 'POST'])
-@login_required
+@role_required(['ProductManager', 'Admin'])
 def addnewproduction():
-    from flask_login import current_user
-    
     # Update the upload folder path
     UPLOAD_FOLDER = '../-WellsFlow-Green-Wells-/greenwells_wellsflow/static/uploads'
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
@@ -393,22 +438,21 @@ def addnewproduction():
     return render_template("fleet/fleet_extend/production/addnewproduction.html")
 
 
-
-
 @app.route("/employees")
+@role_required(['Admin'])
 def employees():
     return render_template("fleet/adminside_fleet/employees/employees.html")
 
 
 @app.route("/orders")
+@role_required(['CustomerService', 'Admin', 'Financer'])
 def orders():
     return render_template("fleet/adminside_fleet/orders.html")
 
 
-
 # Add this route to your app.py
 @app.route("/customersmanage", methods=['GET', 'POST'])
-@login_required
+@role_required(['CustomerService', 'Admin'])
 def customersmanage():
     conn = sqlite3.connect(shopfleetdb)
     conn.row_factory = sqlite3.Row
@@ -455,9 +499,8 @@ def customersmanage():
                            total_customers=total_customers)
 
 
-
 @app.route("/ordersmanage", methods=['GET', 'POST'])
-@login_required
+@role_required(['CustomerService', 'Admin', 'Financer'])
 def ordersmanage():
     conn = sqlite3.connect(shopfleetdb)
     conn.row_factory = sqlite3.Row
@@ -596,13 +639,16 @@ def ordersmanage():
 
 
 @app.route("/finances")
+@role_required(['Financer', 'Admin'])
 def finances():
     return render_template("fleet/adminside_fleet/finances.html")
 
 
 @app.route("/reports")
+@role_required(['Admin', 'Financer', 'ProductManager'])
 def reports():
     return render_template("fleet/adminside_fleet/reports.html")
 
 
-app.run(debug=True)
+if __name__ == '__main__':
+    app.run(debug=True)
