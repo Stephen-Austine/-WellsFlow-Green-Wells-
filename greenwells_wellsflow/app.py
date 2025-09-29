@@ -137,7 +137,6 @@ def debug_all_users():
 
 
 @app.route("/dashboard")
-@role_required(['Admin'])
 def dashboard():
     return render_template("fleet/adminside_fleet/dashboard.html")
 
