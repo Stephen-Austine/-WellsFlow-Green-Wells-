@@ -15,7 +15,8 @@
     <div class="collapse navbar-collapse">
       <ul class="navbar-nav me-auto">
         <li class="nav-item"><a class="nav-link" href="/shop">Shop</a></li>
-        <li class="nav-item"><a class="nav-link" href="/fleet">Fleet</a></li>
+        <li class="nav-item"><a class="nav-link" href="">Bulk</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('fleet.fleet_home') }}">Fleet</a></li>
       </ul>
       <ul class="navbar-nav">
         {% if current_user.is_authenticated %}

@@ -6,7 +6,7 @@ from forms_fleet import FleetOrderForm
 
 fleet_bp = Blueprint("fleet", __name__, template_folder="../templates/fleet")
 
-@fleet_bp.route("/lpoiuyt", methods=["GET", "POST"])
+@fleet_bp.route("/fleetordering", methods=["GET", "POST"])
 @login_required
 def fleet_home():
     # If user is an ADMIN → management dashboard
