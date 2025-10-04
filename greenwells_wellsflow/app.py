@@ -4,6 +4,7 @@ import sqlite3
 from user_object import UserObject
 from routes import register_blueprints  # ✅ auto-blueprint loader
 from functools import wraps
+from routes.gasrefill import gasrefill_bp
 
 # Add the role_required decorator
 def role_required(allowed_roles):
@@ -650,4 +651,5 @@ def reports():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    print("\n Open in browser: http://127.0.0.1:5000\n")
+    app.run(debug=True, port=5000, use_reloader=True)

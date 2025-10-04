@@ -1,0 +1,144 @@
+# routes/gasrefill.py
+from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask_login import login_required, current_user
+import sqlite3
+from datetime import datetime
+
+# ✅ Only import what you use — no unused imports
+gasrefill_bp = Blueprint("gasrefill", __name__, template_folder="../templates/gasrefill")
+
+# ✅ Use your existing DB path
+DB_PATH = '../-WellsFlow-Green-Wells-/greenwells_wellsflow/instance/shopfleet.db'
+
+def get_db_connection():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+# --- Customer Gas Refill Form ---
+@gasrefill_bp.route("/gasrefill", methods=["GET", "POST"])
+@login_required
+def gas_refill_form():
+    if current_user.role != "customer":
+        flash("Only customers can request gas refills.", "warning")
+        return redirect(url_for("shop.shop_home"))
+
+    # Mock cylinder options (you can later pull from Products table)
+    cylinders = [
+        {"type": "Standard", "sizes": ["6kg", "12kg", "18kg", "24kg", "32kg"]},
+        {"type": "Premium", "sizes": ["6kg", "12kg", "18kg"]}
+    ]
+    locations = ["Nairobi CBD", "Westlands", "Karen", "Kasarani", "Ruiru", "Thika"]
+
+    if request.method == "POST":
+        cylinder_type = request.form.get("cylinder_type")
+        size = request.form.get("size")
+        location = request.form.get("location")
+        instructions = request.form.get("instructions", "").strip()
+
+        if not all([cylinder_type, size, location]):
+            flash("Please fill all required fields.", "danger")
+            return render_template("gasrefill/customer_request.html", cylinders=cylinders, locations=locations)
+
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            user_id = getattr(current_user, 'user_id', getattr(current_user, 'id', None))
+            cursor.execute("""
+                INSERT INTO GasRefillOrders (
+                    customer_id, cylinder_type, size_kg, location, instructions,
+                    status, order_timestamp
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                user_id,
+                cylinder_type,
+                size,
+                location,
+                instructions,
+                "Pending",
+                datetime.now().timestamp()
+            ))
+            order_id = cursor.lastrowid
+            conn.commit()
+            conn.close()
+            flash("✅ Your gas refill request has been submitted!", "success")
+            return redirect(url_for("gasrefill.order_tracking", order_id=order_id))
+        except Exception as e:
+            flash(f"Error submitting request: {str(e)}", "danger")
+            return render_template("gasrefill/customer_request.html", cylinders=cylinders, locations=locations)
+
+    return render_template("gasrefill/customer_request.html", cylinders=cylinders, locations=locations)
+
+# --- Admin Dashboard ---
+@gasrefill_bp.route("/gasrefill/admin", methods=["GET", "POST"])
+@login_required
+def admin_gas_refill_dashboard():
+    allowed_roles = ["Admin", "CustomerService", "Financer"]
+    if current_user.role not in allowed_roles:
+        flash("Access denied.", "danger")
+        return redirect(url_for("home"))
+
+    conn = get_db_connection()
+    filter_status = request.args.get('status')
+
+    if request.method == "POST":
+        order_id = request.form.get("order_id")
+        new_status = request.form.get("status")
+        cursor = conn.cursor()
+        cursor.execute("UPDATE GasRefillOrders SET status = ? WHERE order_id = ?", (new_status, order_id))
+        conn.commit()
+        flash("✅ Order status updated!", "success")
+        return redirect(url_for("gasrefill.admin_gas_refill_dashboard", status=filter_status))
+
+    if filter_status:
+        cursor = conn.execute("SELECT * FROM GasRefillOrders WHERE status = ?", (filter_status,))
+    else:
+        cursor = conn.execute("SELECT * FROM GasRefillOrders ORDER BY order_timestamp DESC")
+    orders = cursor.fetchall()
+
+    cursor.execute("SELECT status, COUNT(*) as count FROM GasRefillOrders GROUP BY status")
+    status_counts = cursor.fetchall()
+    cursor.execute("SELECT COUNT(*) as total FROM GasRefillOrders")
+    total_orders = cursor.fetchone()['total']
+    conn.close()
+
+    return render_template("gasrefill/admin_dashboard.html",
+                           orders=orders,
+                           status_counts=status_counts,
+                           current_filter=filter_status,
+                           total_orders=total_orders)
+
+# --- Order Tracking ---
+@gasrefill_bp.route("/gasrefill/tracking/<int:order_id>")
+@login_required
+def order_tracking(order_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT g.*, u.first_name, u.last_name 
+        FROM GasRefillOrders g
+        JOIN Users u ON g.customer_id = u.user_id
+        WHERE g.order_id = ?
+    """, (order_id,))
+    order = cursor.fetchone()
+    conn.close()
+
+    if not order or (order['customer_id'] != getattr(current_user, 'user_id', None)):
+        flash("Order not found or access denied.", "danger")
+        return redirect(url_for("gasrefill.gas_refill_form"))
+
+    status_steps = {
+        "Pending": 0,
+        "Assigned": 1,
+        "In Transit": 2,
+        "Delivered": 3
+    }
+    current_step = status_steps.get(order['status'], 0)
+    steps = [
+        {"label": "Request Received", "active": current_step >= 0},
+        {"label": "Assigned to Driver", "active": current_step >= 1},
+        {"label": "On the Way", "active": current_step >= 2},
+        {"label": "Delivered", "active": current_step >= 3}
+    ]
+
+    return render_template("gasrefill/order_tracking.html", order=order, steps=steps)
