@@ -5,9 +5,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>WellsFlow - Shop</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css  " rel="stylesheet"/>
   <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css  ">
   <style>
     /* Fixed navigation bar */
     .navbar {
@@ -50,24 +50,77 @@
       align-items: center;
       justify-content: center;
     }
+
+    /* Pagination styles */
+    .pagination-container {
+      margin-top: 2rem;
+    }
+    
+    .pagination-info {
+      margin-bottom: 1rem;
+      text-align: center;
+      color: #6c757d;
+    }
+    
+    /* Product item visibility */
+    .product-item.hidden {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
-<nav class="navbar navbar-expand-lg navbar-light bg-light">
+<nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
   <div class="container">
     <a class="navbar-brand text-success fw-bold" href="/">WellsFlow</a>
-    <div class="collapse navbar-collapse">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav me-auto">
-        <li class="nav-item"><a class="nav-link" href="/shop">Shop</a></li>
-        <li class="nav-item"><a class="nav-link" href="/fleet">Fleet</a></li>
+        {% if current_user.is_authenticated %}
+          {% if current_user.role == 'customer' %}
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('shop.shop_home') }}">Shop</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('gasrefill.gas_refill_form') }}">Gas Refill</a></li>
+            <li class="nav-item"><a class="nav-link" href="#">My Orders</a></li>
+          {% elif current_user.role == 'admin' %}
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('gasrefill.admin_gas_refill_dashboard') }}">Gas Refills</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('vehicles') }}">Fleet Management</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('employees') }}">Employees</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('production') }}">Production</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('orders') }}">Orders</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('customers') }}">Customers</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('finances') }}">Finances</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('reports') }}">Reports</a></li>
+          {% else %}
+            <!-- Other employee roles -->
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('gasrefill.admin_gas_refill_dashboard') }}">Gas Refills</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('vehicles') }}">Fleet</a></li>
+          {% endif %}
+        {% else %}
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('shop.shop_home') }}">Shop</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('gasrefill.gas_refill_form') }}">Gas Refill</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('fleet.fleet_home') }}">Fleet</a></li>
+        {% endif %}
       </ul>
+
       <ul class="navbar-nav">
         {% if current_user.is_authenticated %}
-          <li class="nav-item"><span class="nav-link">Hi, {{ current_user.fname or 'User' }}</span></li>
-          <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.logout') }}">Logout</a></li>
+          <li class="nav-item">
+            <span class="nav-link">Hi, {{ current_user.fname }}{% if current_user.role != 'customer' %} ({{ current_user.role }}){% endif %}</span>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link text-danger" href="{{ url_for('auth.logout') }}">Logout</a>
+          </li>
         {% else %}
-          <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.login') }}">Login</a></li>
-          <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.signup') }}">Sign Up</a></li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('auth.login') }}">Login</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('auth.signup') }}">Sign Up</a>
+          </li>
         {% endif %}
       </ul>
     </div>
@@ -98,7 +151,7 @@
       
       <!-- Search + Filter -->
       <div class="d-flex mb-4">
-        <input type="text" class="form-control me-2" placeholder="🔍 Search products...">
+        <input type="text" class="form-control me-2" placeholder="🔍 Search products..." id="productSearch">
         <button class="btn btn-success">Filter</button>
       </div>
 
@@ -124,11 +177,13 @@
         {% endwith %}
       </div>
 
-
       <!-- Products Grid -->
-      <div class="row g-4">
+      <div class="row g-4" id="productsContainer">
         {% for product in products %}
-        <div class="col-md-6">
+        <div class="col-md-6 product-item" 
+             data-id="{{ product['product_id'] }}" 
+             data-name="{{ product['product_name'] }}" 
+             data-category="{{ product['product_category'] }}">
           <div class="glass-card p-3 h-100 d-flex flex-column">
             <div class="text-center mb-3">
               <img src="{{ url_for('static', filename='images/products/' + product['product_image']) }}"
@@ -169,6 +224,18 @@
         </div>
         {% endfor %}
       </div>
+
+      <!-- Pagination Controls -->
+      <div class="pagination-container">
+        <div class="pagination-info" id="paginationInfo">
+          <!-- Pagination info will be updated by JavaScript -->
+        </div>
+        <nav aria-label="Products pagination">
+          <ul class="pagination justify-content-center" id="paginationControls">
+            <!-- Pagination controls will be generated by JavaScript -->
+          </ul>
+        </nav>
+      </div>
     </div>
 
     <!-- Invoice Sidebar -->
@@ -198,14 +265,12 @@
           <button type="submit" class="btn btn-warning w-100 mb-3">Clear Cart</button>
         </form>
 
-
         <!-- Replace the existing View Cart button with this -->
         {% if current_user.is_authenticated %}
             <a href="{{ url_for('shop.cart') }}" class="btn btn-success w-100">View Cart</a>
         {% else %}
             <a href="{{ url_for('auth.login') }}?next={{ url_for('shop.cart') }}" class="btn btn-success w-100">Login to View Cart</a>
         {% endif %}
-
 
         {% else %}
         <p class="text-muted">Your cart is empty</p>
@@ -216,99 +281,194 @@
   </div>
 </div>
 {% endblock %}
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js  "></script>
 <script>
-  // DOM ready
-  document.addEventListener('DOMContentLoaded', function() {
-    // Auto-dismiss flash messages after 1.5 seconds
-    const flashMessages = document.querySelectorAll('.flash-message');
-    flashMessages.forEach(function(flash) {
-      setTimeout(function() {
-        try {
-          const alert = bootstrap.Alert.getOrCreateInstance(flash);
-          alert.close();
-        } catch (e) {
-          // ignore if bootstrap isn't available
-        }
-      }, 1500);
-    });
-    
-    // Highlight active sidebar link (selector adjusted to match markup)
-    const currentPage = window.location.pathname;
-    const navLinks = document.querySelectorAll('.sidebar-container .nav-link');
-    
-    navLinks.forEach(link => {
-      const href = link.getAttribute('href') || '';
-      // remove trailing slash if present for comparison
-      const linkPath = href.replace(/\/$/, '');
-      const currentPath = currentPage.replace(/\/$/, '');
-      if (currentPath === linkPath || (linkPath !== '' && currentPath.startsWith(linkPath))) {
-        link.classList.add('active');
-      }
-    });
+document.addEventListener('DOMContentLoaded', function() {
+  // Auto-dismiss flash messages
+  document.querySelectorAll('.flash-message').forEach(function(flash) {
+    setTimeout(function() {
+      try { bootstrap.Alert.getOrCreateInstance(flash).close(); } catch(e) {}
+    }, 1500);
+  });
 
-    // Attach event listeners to increase/decrease buttons using data attributes (no inline JS)
-    document.querySelectorAll('.quantity-increase').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const pid = this.dataset.productId;
-        increaseQuantity(pid);
-      });
+  // Sidebar active link highlight
+  (function highlightSidebar() {
+    var currentPage = window.location.pathname.replace(/\/$/, '');
+    document.querySelectorAll('.sidebar-container .nav-link').forEach(function(link) {
+      var href = (link.getAttribute('href') || '').replace(/\/$/, '');
+      if (href !== '' && (currentPage === href || currentPage.startsWith(href))) link.classList.add('active');
     });
-    document.querySelectorAll('.quantity-decrease').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const pid = this.dataset.productId;
-        decreaseQuantity(pid);
-      });
-    });
+  })();
 
-    // Update hidden input whenever quantity input changes
-    document.querySelectorAll('.quantity-input').forEach(input => {
-      input.addEventListener('change', function() {
-        const productId = this.id.replace('quantity-', '');
-        const hiddenInput = document.getElementById('hidden-quantity-' + productId);
-        let value = parseInt(this.value, 10);
-        if (isNaN(value) || value < 1) {
-          value = 1;
-          this.value = 1;
-        } else if (value > 100) {
-          value = 100;
-          this.value = 100;
-        }
-        if (hiddenInput) {
-          hiddenInput.value = value;
-        }
-      });
+  // Quantity buttons
+  document.querySelectorAll('.quantity-increase').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      increaseQuantity(this.dataset.productId);
     });
   });
-  
-  // Quantity selection functions (use string concatenation to avoid template-literal confusion)
-  function increaseQuantity(productId) {
-    const id = String(productId);
-    const quantityInput = document.getElementById('quantity-' + id);
-    const hiddenInput = document.getElementById('hidden-quantity-' + id);
-    if (!quantityInput || !hiddenInput) return;
-    let value = parseInt(quantityInput.value, 10);
-    if (isNaN(value)) value = 1;
-    if (value < 100) {
-      value = value + 1;
-      quantityInput.value = value;
-      hiddenInput.value = value;
+  document.querySelectorAll('.quantity-decrease').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      decreaseQuantity(this.dataset.productId);
+    });
+  });
+  document.querySelectorAll('.quantity-input').forEach(function(input) {
+    input.addEventListener('change', function() {
+      var productId = this.id.replace('quantity-', '');
+      var hidden = document.getElementById('hidden-quantity-' + productId);
+      var v = parseInt(this.value, 10);
+      if (isNaN(v) || v < 1) v = 1;
+      if (v > 100) v = 100;
+      this.value = v;
+      if (hidden) hidden.value = v;
+    });
+  });
+
+  // Pagination + Search (robust)
+  var itemsPerPage = 8;
+  var currentPage = 1;
+
+  // master list of all product DOM nodes
+  var allProductItems = Array.from(document.querySelectorAll('.product-item'));
+  // visibleItems is the currently filtered set shown in pagination
+  var visibleItems = allProductItems.slice();
+
+  var paginationInfoEl = document.getElementById('paginationInfo');
+  var paginationControlsEl = document.getElementById('paginationControls');
+
+  function showPage(page) {
+    currentPage = page;
+    // hide all
+    allProductItems.forEach(function(it) { it.classList.add('hidden'); });
+
+    var totalItems = visibleItems.length;
+    var startIndex = (page - 1) * itemsPerPage;
+    var endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+
+    for (var i = startIndex; i < endIndex; i++) {
+      visibleItems[i].classList.remove('hidden');
+    }
+
+    // update info text
+    if (totalItems === 0) {
+      paginationInfoEl.textContent = 'No products found';
+    } else {
+      paginationInfoEl.textContent = 'Showing ' + (startIndex + 1) + '-' + endIndex + ' of ' + totalItems + ' products';
     }
   }
-  
-  function decreaseQuantity(productId) {
-    const id = String(productId);
-    const quantityInput = document.getElementById('quantity-' + id);
-    const hiddenInput = document.getElementById('hidden-quantity-' + id);
-    if (!quantityInput || !hiddenInput) return;
-    let value = parseInt(quantityInput.value, 10);
-    if (isNaN(value)) value = 1;
-    if (value > 1) {
-      value = value - 1;
-      quantityInput.value = value;
-      hiddenInput.value = value;
+
+  function generatePaginationControls() {
+    var totalItems = visibleItems.length;
+    var totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+    paginationControlsEl.innerHTML = '';
+
+    if (totalPages <= 1) return;
+
+    // helper to create page button
+    function makePageItem(label, isActive, isDisabled, clickHandler) {
+      var li = document.createElement('li');
+      li.className = 'page-item' + (isActive ? ' active' : '') + (isDisabled ? ' disabled' : '');
+      var a = document.createElement('a');
+      a.className = 'page-link';
+      a.href = '#';
+      a.textContent = label;
+      if (!isDisabled && clickHandler) {
+        a.addEventListener('click', function(e) { e.preventDefault(); clickHandler(); });
+      }
+      li.appendChild(a);
+      return li;
     }
+
+    // Prev
+    paginationControlsEl.appendChild(makePageItem('«', false, currentPage === 1, function() {
+      if (currentPage > 1) { showPage(currentPage - 1); generatePaginationControls(); }
+    }));
+
+    // compute window of pages
+    var startPage, endPage;
+    if (totalPages <= 5) { startPage = 1; endPage = totalPages; }
+    else {
+      if (currentPage <= 3) { startPage = 1; endPage = 5; }
+      else if (currentPage + 2 >= totalPages) { startPage = totalPages - 4; endPage = totalPages; }
+      else { startPage = currentPage - 2; endPage = currentPage + 2; }
+    }
+
+    // first + ellipsis if needed
+    if (startPage > 1) {
+      paginationControlsEl.appendChild(makePageItem('1', false, false, function() { showPage(1); generatePaginationControls(); }));
+      if (startPage > 2) paginationControlsEl.appendChild(makePageItem('...', true, true));
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      // use let so each handler captures the correct i
+      paginationControlsEl.appendChild(makePageItem(i, i === currentPage, false, function() {
+        showPage(i); generatePaginationControls();
+      }));
+    }
+
+    // last + ellipsis
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) paginationControlsEl.appendChild(makePageItem('...', true, true));
+      paginationControlsEl.appendChild(makePageItem(totalPages, false, false, function() { showPage(totalPages); generatePaginationControls(); }));
+    }
+
+    // Next
+    paginationControlsEl.appendChild(makePageItem('»', false, currentPage === totalPages, function() {
+      if (currentPage < totalPages) { showPage(currentPage + 1); generatePaginationControls(); }
+    }));
   }
+
+  // Initial render
+  showPage(1);
+  generatePaginationControls();
+
+  // Search input: filter visibleItems and reset pagination
+  var searchInput = document.getElementById('productSearch');
+  searchInput.addEventListener('input', function() {
+    var term = this.value.trim().toLowerCase();
+    if (term === '') {
+      visibleItems = allProductItems.slice();
+    } else {
+      visibleItems = allProductItems.filter(function(item) {
+        var id = (item.dataset.id || '').toLowerCase();
+        var name = (item.dataset.name || '').toLowerCase();
+        var category = (item.dataset.category || '').toLowerCase();
+        return id.includes(term) || name.includes(term) || category.includes(term);
+      });
+    }
+    // reset to first page of filtered results
+    showPage(1);
+    generatePaginationControls();
+  });
+});
+
+// quantity helper functions (kept global if forms expect them)
+function increaseQuantity(productId) {
+  var id = String(productId);
+  var quantityInput = document.getElementById('quantity-' + id);
+  var hiddenInput = document.getElementById('hidden-quantity-' + id);
+  if (!quantityInput || !hiddenInput) return;
+  var value = parseInt(quantityInput.value, 10);
+  if (isNaN(value)) value = 1;
+  if (value < 100) {
+    value = value + 1;
+    quantityInput.value = value;
+    hiddenInput.value = value;
+  }
+}
+function decreaseQuantity(productId) {
+  var id = String(productId);
+  var quantityInput = document.getElementById('quantity-' + id);
+  var hiddenInput = document.getElementById('hidden-quantity-' + id);
+  if (!quantityInput || !hiddenInput) return;
+  var value = parseInt(quantityInput.value, 10);
+  if (isNaN(value)) value = 1;
+  if (value > 1) {
+    value = value - 1;
+    quantityInput.value = value;
+    hiddenInput.value = value;
+  }
+}
 </script>
+
 </body>
 </html>

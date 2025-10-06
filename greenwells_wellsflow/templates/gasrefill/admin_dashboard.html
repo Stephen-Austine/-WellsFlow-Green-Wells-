@@ -1,25 +1,31 @@
 {% extends "adminside_fleet/adminlayout.html" %}
 {% block content %}
+
 <div class="container">
   <h3>Gas Refill Orders</h3>
-
-  <!-- Search Bar -->
+  
+  <!-- Search and Add Button Row -->
   <div class="row mb-3">
     <div class="col-md-12">
       <div class="input-group">
-        <span class="input-group-text"><i class="fas fa-search"></i></span>
-        <input type="text" class="form-control" id="gasSearch" placeholder="Search by ID, Customer, Status...">
+        <span class="input-group-text" id="search-icon">
+          <i class="fas fa-search"></i>
+        </span>
+        <input type="text" class="form-control" id="gasSearch" placeholder="Search by ID, Customer, Status..." aria-label="Search orders" aria-describedby="search-icon">
       </div>
     </div>
   </div>
-
-  <!-- Status Tabs -->
+  
+  <!-- Status Tabs with Custom Status Filter -->
   <ul class="nav nav-tabs mb-3">
     <li class="nav-item">
       <a class="nav-link {% if not current_filter %}active{% endif %}" href="{{ url_for('gasrefill.admin_gas_refill_dashboard') }}">
-        All Orders <span class="badge bg-primary">{{ total_orders }}</span>
+        All Orders 
+        <span class="badge bg-primary">{{ total_orders }}</span>
       </a>
     </li>
+    
+    <!-- Status Filters -->
     {% for s in status_counts %}
       <li class="nav-item">
         <a class="nav-link {% if current_filter == s['status'] %}active{% endif %}" 
@@ -28,8 +34,29 @@
         </a>
       </li>
     {% endfor %}
+    
+    <!-- Custom Status Dropdown -->
+    <li class="nav-item ms-auto">
+      <div class="dropdown">
+        <button class="btn btn-outline-secondary dropdown-toggle nav-link status-dropdown-btn" type="button" id="statusDropdown" onclick="toggleStatusDropdown()">
+          Status: {{ current_filter or 'All' }}
+        </button>
+        <div class="dropdown-menu dropdown-menu-end" id="statusDropdownMenu" style="display: none;">
+          <a class="dropdown-item {% if not current_filter %}active{% endif %}" href="{{ url_for('gasrefill.admin_gas_refill_dashboard') }}">All Statuses</a>
+          <div class="dropdown-divider"></div>
+          {% for s in status_counts %}
+            <a class="dropdown-item d-flex justify-content-between {% if current_filter == s['status'] %}active{% endif %}" 
+               href="{{ url_for('gasrefill.admin_gas_refill_dashboard', status=s['status']) }}">
+              {{ s['status'] }} 
+              <span class="badge bg-secondary ms-2">{{ s['count'] }}</span>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+    </li>
   </ul>
 
+  <!-- Flash Messages -->
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
       {% for category, message in messages %}
@@ -41,101 +68,376 @@
     {% endif %}
   {% endwith %}
 
-  {% if orders %}
-    <div id="gasList">
-      {% for order in orders %}
-        <div class="card mt-2 gas-item" 
-             data-id="{{ order['order_id'] }}" 
-             data-status="{{ order['status'] }}">
-          <div class="card-body">
-            <div class="d-flex justify-content-between">
-              <div>
-                <strong>Order #{{ order['order_id'] }}</strong> — {{ order['cylinder_type'] }} ({{ order['size_kg'] }})
-                <br>📍 {{ order['location'] }}
-                {% if order['instructions'] %}<br>📝 {{ order['instructions'] }}{% endif %}
+  <div class="card">
+    <div class="card-body">
+      {% if orders %}
+        <div id="orderList">
+          {% for order in orders %}
+            <div class="card mt-2 order-item" 
+                 data-id="{{ order['order_id'] }}" 
+                 data-status="{{ order['status'] }}">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div class="row w-100">
+                    <!-- Order Info Columns -->
+                    <div class="col-md-3">
+                      <p class="mb-1"><strong>ID:</strong> {{ order['order_id'] }}</p>
+                      <p class="mb-1"><strong>Cylinder Type:</strong> {{ order['cylinder_type'] }}</p>
+                    </div>
+                    <div class="col-md-5">
+                      <p class="mb-1"><strong>Size:</strong> {{ order['size_kg'] }} kg</p>
+                      <p class="mb-1"><strong>Location:</strong> {{ order['location'] }}</p>
+                    </div>
+                    <div class="col-md-1">
+                      <p class="mb-1"><strong>Status:</strong></p>
+                      <span class="badge bg-{% if order['status'] == 'Delivered' %}success{% elif order['status'] == 'Pending' %}warning{% else %}info{% endif %}">
+                        {{ order['status'] }}
+                      </span>
+                    </div>
+                    <div class="col-md-3 text-end">
+                      <!-- More Info Button -->
+                      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#orderModal{{ order['order_id'] }}">
+                        More Info
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <span class="badge bg-{% if order['status'] == 'Delivered' %}success{% elif order['status'] == 'Pending' %}warning{% else %}info{% endif %}">
-                {{ order['status'] }}
-              </span>
             </div>
-          </div>
-        </div>
-      {% endfor %}
-    </div>
 
-    <nav aria-label="Gas refill pagination" class="mt-4">
-      <ul class="pagination justify-content-center" id="paginationControls"></ul>
-    </nav>
-  {% else %}
-    <div class="text-center py-4">No gas refill orders.</div>
-  {% endif %}
+            <!-- Order Modal -->
+            <div class="modal fade" id="orderModal{{ order['order_id'] }}" tabindex="-1" aria-labelledby="orderModalLabel{{ order['order_id'] }}" aria-hidden="true">
+              <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="orderModalLabel{{ order['order_id'] }}">Order Details - ID: {{ order['order_id'] }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    <div class="row">
+                      <div class="col-md-6">
+                        <p><strong>Order ID:</strong> {{ order['order_id'] }}</p>
+                        <p><strong>Cylinder Type:</strong> {{ order['cylinder_type'] }}</p>
+                        <p><strong>Size:</strong> {{ order['size_kg'] }} kg</p>
+                        <p><strong>Location:</strong> {{ order['location'] }}</p>
+                        <p><strong>Instructions:</strong> {{ order['instructions'] or 'N/A' }}</p>
+                        <p><strong>Status:</strong> 
+                          <span class="badge bg-{% if order['status'] == 'Delivered' %}success{% elif order['status'] == 'Pending' %}warning{% else %}info{% endif %}">
+                            {{ order['status'] }}
+                          </span>
+                        </p>
+                      </div>
+                      <div class="col-md-6">
+                        <p><strong>Customer Name:</strong> {{ order['customer_name'] }}</p>
+                        <p><strong>Customer Contact:</strong> {{ order['customer_contact'] }}</p>
+                        <p><strong>Placed On:</strong> {{ order['order_date'] }}</p>
+                        <p><strong>Delivery Date:</strong> {{ order['delivery_date'] or 'N/A' }}</p>
+                        <p><strong>Delivery Instructions:</strong> {{ order['delivery_instructions'] or 'N/A' }}</p>
+                      </div>
+                    </div>
+                    
+                    <!-- Status Change Form -->
+                    <hr>
+                    <form method="POST">
+                      <input type="hidden" name="order_id" value="{{ order['order_id'] }}">
+                      <div class="mb-3">
+                        <label for="statusSelect{{ order['order_id'] }}" class="form-label"><strong>Change Status:</strong></label>
+                        <select class="form-select" id="statusSelect{{ order['order_id'] }}" name="status">
+                          <option value="Pending" {% if order['status'] == 'Pending' %}selected{% endif %}>Pending</option>
+                          <option value="In Progress" {% if order['status'] == 'In Progress' %}selected{% endif %}>In Progress</option>
+                          <option value="Delivered" {% if order['status'] == 'Delivered' %}selected{% endif %}>Delivered</option>
+                          <option value="Cancelled" {% if order['status'] == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+                        </select>
+                      </div>
+                      <button type="submit" class="btn btn-success">Update Status</button>
+                    </form>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+        
+        <!-- Improved Pagination Controls -->
+        <nav aria-label="Order pagination" class="mt-4">
+          <ul class="pagination justify-content-center" id="paginationControls">
+            <!-- Pagination will be generated by JavaScript -->
+          </ul>
+        </nav>
+        
+        <!-- No results message -->
+        <div id="noResults" class="text-center py-5 d-none">
+          <h5>No orders found matching your search.</h5>
+        </div>
+      {% else %}
+        <div class="text-center py-5">
+          <h5>No gas refill orders found{% if current_filter %} with status "{{ current_filter }}"{% endif %}.</h5>
+          <a href="{{ url_for('addneworder') }}" class="btn btn-primary mt-3">
+            <i class="fas fa-plus"></i> Add New Order
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
 </div>
 
+<!-- Font Awesome for search icon -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+<!-- Ensure Bootstrap JS is loaded -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+  // Auto-dismiss flash messages after 3 seconds
   document.addEventListener('DOMContentLoaded', function() {
-    // Flash auto-dismiss
-    document.querySelectorAll('.flash-message').forEach(flash => {
-      setTimeout(() => bootstrap.Alert.getOrCreateInstance(flash).close(), 3000);
+    const flashMessages = document.querySelectorAll('.flash-message');
+    flashMessages.forEach(function(flash) {
+      setTimeout(function() {
+        const alert = bootstrap.Alert.getOrCreateInstance(flash);
+        alert.close();
+      }, 3000);
     });
-
-    // Search
+    
+    // Search functionality
     const searchInput = document.getElementById('gasSearch');
-    const gasItems = document.querySelectorAll('.gas-item');
+    const orderItems = document.querySelectorAll('.order-item');
+    const noResults = document.getElementById('noResults');
+    
     searchInput.addEventListener('input', function() {
-      const term = this.value.toLowerCase();
+      const searchTerm = this.value.toLowerCase();
       let hasResults = false;
-      gasItems.forEach(item => {
+      
+      orderItems.forEach(item => {
         const id = item.dataset.id.toLowerCase();
         const status = item.dataset.status.toLowerCase();
-        if (id.includes(term) || status.includes(term)) {
+        
+        if (id.includes(searchTerm) || status.includes(searchTerm)) {
           item.style.display = '';
           hasResults = true;
         } else {
           item.style.display = 'none';
         }
       });
-      if (hasResults || term === '') initPagination();
+      
+      // Show/hide no results message
+      if (hasResults || searchTerm === '') {
+        noResults.classList.add('d-none');
+        initPagination(); // Reinitialize pagination after search
+      } else {
+        noResults.classList.remove('d-none');
+      }
     });
-
-    // Pagination
+    
+    // Pagination functionality
     const itemsPerPage = 4;
     let currentPage = 1;
+    let filteredItems = Array.from(orderItems);
+    
     function initPagination() {
-      const visible = Array.from(gasItems).filter(i => i.style.display !== 'none');
-      const totalPages = Math.ceil(visible.length / itemsPerPage);
-      const start = (currentPage - 1) * itemsPerPage;
-      gasItems.forEach(i => i.style.display = 'none');
-      visible.slice(start, start + itemsPerPage).forEach(i => i.style.display = '');
-      generatePagination(totalPages);
+      // Get currently visible items
+      filteredItems = Array.from(orderItems).filter(item => item.style.display !== 'none');
+      
+      // Calculate total pages
+      const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+      
+      // Hide all items
+      orderItems.forEach(item => item.style.display = 'none');
+      
+      // Show items for current page
+      showPage(currentPage);
+      
+      // Generate pagination controls
+      generatePaginationControls(totalPages);
     }
-    function generatePagination(totalPages) {
-      const ul = document.getElementById('paginationControls');
-      ul.innerHTML = '';
+    
+    function showPage(page) {
+      const startIndex = (page - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage;
+      
+      // Hide all items
+      filteredItems.forEach(item => item.style.display = 'none');
+      
+      // Show items for current page
+      filteredItems.slice(startIndex, endIndex).forEach(item => item.style.display = '');
+    }
+    
+    function generatePaginationControls(totalPages) {
+      const paginationControls = document.getElementById('paginationControls');
+      paginationControls.innerHTML = '';
+      
       if (totalPages <= 1) return;
-      // Prev
+      
+      // Maximum number of page buttons to show
+      const maxVisiblePages = 3;
+      
+      // Previous button
       const prevLi = document.createElement('li');
       prevLi.className = 'page-item' + (currentPage === 1 ? ' disabled' : '');
-      prevLi.innerHTML = '<a class="page-link" href="#">&laquo;</a>';
-      if (currentPage > 1) prevLi.querySelector('a').onclick = e => { e.preventDefault(); currentPage--; initPagination(); };
-      ul.appendChild(prevLi);
-      // Pages
-      for (let i = 1; i <= totalPages; i++) {
+      prevLi.innerHTML = `<a class="page-link" href="#" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                          </a>`;
+      if (currentPage > 1) {
+        prevLi.querySelector('a').addEventListener('click', function(e) {
+          e.preventDefault();
+          currentPage--;
+          showPage(currentPage);
+          generatePaginationControls(totalPages);
+        });
+      }
+      paginationControls.appendChild(prevLi);
+      
+      // First page button
+      if (totalPages > maxVisiblePages) {
+        const firstLi = document.createElement('li');
+        firstLi.className = 'page-item' + (currentPage === 1 ? ' active' : '');
+        firstLi.innerHTML = `<a class="page-link" href="#">1</a>`;
+        if (currentPage !== 1) {
+          firstLi.querySelector('a').addEventListener('click', function(e) {
+            e.preventDefault();
+            currentPage = 1;
+            showPage(currentPage);
+            generatePaginationControls(totalPages);
+          });
+        }
+        paginationControls.appendChild(firstLi);
+        
+        // Ellipsis if needed
+        if (currentPage > maxVisiblePages) {
+          const ellipsisLi = document.createElement('li');
+          ellipsisLi.className = 'page-item disabled';
+          ellipsisLi.innerHTML = `<span class="page-link">...</span>`;
+          paginationControls.appendChild(ellipsisLi);
+        }
+      }
+      
+      // Calculate start and end page numbers
+      let startPage, endPage;
+      if (totalPages <= maxVisiblePages) {
+        // Show all pages
+        startPage = 1;
+        endPage = totalPages;
+      } else {
+        // Calculate start and end pages based on current page
+        const halfVisible = Math.floor(maxVisiblePages / 2);
+        if (currentPage <= halfVisible) {
+          startPage = 1;
+          endPage = maxVisiblePages;
+        } else if (currentPage + halfVisible >= totalPages) {
+          startPage = totalPages - maxVisiblePages + 1;
+          endPage = totalPages;
+        } else {
+          startPage = currentPage - halfVisible;
+          endPage = currentPage + halfVisible;
+        }
+      }
+      
+      // Page numbers
+      for (let i = startPage; i <= endPage; i++) {
+        if (i === 1 && totalPages > maxVisiblePages) continue; // Skip first if already shown
+        if (i === totalPages && totalPages > maxVisiblePages) continue; // Skip last if already shown
+        
         const li = document.createElement('li');
         li.className = 'page-item' + (i === currentPage ? ' active' : '');
         li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
-        if (i !== currentPage) li.querySelector('a').onclick = e => { e.preventDefault(); currentPage = i; initPagination(); };
-        ul.appendChild(li);
+        
+        if (i !== currentPage) {
+          li.querySelector('a').addEventListener('click', function(e) {
+            e.preventDefault();
+            currentPage = i;
+            showPage(currentPage);
+            generatePaginationControls(totalPages);
+          });
+        }
+        
+        paginationControls.appendChild(li);
       }
-      // Next
+      
+      // Ellipsis and last page button if needed
+      if (totalPages > maxVisiblePages) {
+        // Ellipsis if needed
+        if (currentPage < totalPages - maxVisiblePages + 1) {
+          const ellipsisLi = document.createElement('li');
+          ellipsisLi.className = 'page-item disabled';
+          ellipsisLi.innerHTML = `<span class="page-link">...</span>`;
+          paginationControls.appendChild(ellipsisLi);
+        }
+        
+        // Last page button
+        const lastLi = document.createElement('li');
+        lastLi.className = 'page-item' + (currentPage === totalPages ? ' active' : '');
+        lastLi.innerHTML = `<a class="page-link" href="#">${totalPages}</a>`;
+        if (currentPage !== totalPages) {
+          lastLi.querySelector('a').addEventListener('click', function(e) {
+            e.preventDefault();
+            currentPage = totalPages;
+            showPage(currentPage);
+            generatePaginationControls(totalPages);
+          });
+        }
+        paginationControls.appendChild(lastLi);
+      }
+      
+      // Next button
       const nextLi = document.createElement('li');
       nextLi.className = 'page-item' + (currentPage === totalPages ? ' disabled' : '');
-      nextLi.innerHTML = '<a class="page-link" href="#">&raquo;</a>';
-      if (currentPage < totalPages) nextLi.querySelector('a').onclick = e => { e.preventDefault(); currentPage++; initPagination(); };
-      ul.appendChild(nextLi);
+      nextLi.innerHTML = `<a class="page-link" href="#" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                          </a>`;
+      if (currentPage < totalPages) {
+        nextLi.querySelector('a').addEventListener('click', function(e) {
+          e.preventDefault();
+          currentPage++;
+          showPage(currentPage);
+          generatePaginationControls(totalPages);
+        });
+      }
+      paginationControls.appendChild(nextLi);
     }
+    
+    // Initialize pagination on page load
     initPagination();
   });
+  
+  // Custom dropdown functionality
+  function toggleStatusDropdown() {
+    const dropdownMenu = document.getElementById('statusDropdownMenu');
+    const isDisplayed = dropdownMenu.style.display === 'block';
+    dropdownMenu.style.display = isDisplayed ? 'none' : 'block';
+  }
+  
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function(event) {
+    const dropdown = document.querySelector('.dropdown');
+    const dropdownMenu = document.getElementById('statusDropdownMenu');
+    
+    if (dropdown && !dropdown.contains(event.target)) {
+      dropdownMenu.style.display = 'none';
+    }
+  });
 </script>
+
+<style>
+  /* Custom green hover effect for status dropdown */
+  .status-dropdown-btn:hover {
+    background-color: #198754 !important; /* Bootstrap success green */
+    color: white !important;
+    border-color: #198754 !important;
+  }
+  
+  .status-dropdown-btn:focus {
+    box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25) !important;
+  }
+  
+  /* Ensure dropdown items also have green hover effect */
+  .dropdown-item:hover {
+    background-color: #e8f3ef !important; /* Light green background */
+  }
+  
+  .dropdown-item.active {
+    background-color: #198754 !important; /* Dark green for active */
+  }
+</style>
+
 {% endblock %}
