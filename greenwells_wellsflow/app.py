@@ -499,7 +499,7 @@ def customersmanage():
 
 
 @app.route("/ordersmanage", methods=['GET', 'POST'])
-@role_required(['CustomerService', 'Admin', 'Financer'])
+@role_required(['CustomerService', 'Admin', 'Financer', 'Driver'])
 def ordersmanage():
     conn = sqlite3.connect(shopfleetdb)
     conn.row_factory = sqlite3.Row

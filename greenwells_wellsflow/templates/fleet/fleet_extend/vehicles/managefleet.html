@@ -16,7 +16,7 @@
       </div>
     </div>
     <div class="col-md-4">
-      <button class="btn btn-outline-primary w-100" onclick="location.href = 'vehiclesaddnew'">
+      <button class="btn btn-outline-success w-100" onclick="location.href = 'vehiclesaddnew'">
         <i class="fas fa-plus-circle me-2"></i>Add Fleet Vehicles
       </button>
     </div>
@@ -27,7 +27,7 @@
     <li class="nav-item">
       <a class="nav-link {% if not current_filter %}active{% endif %}" href="{{ url_for('vehiclesmanagefleet') }}">
         All Fleets 
-        <span class="badge bg-primary">{{ total_fleets }}</span>
+        <span class="badge bg-success">{{ total_fleets }}</span>
       </a>
     </li>
     {% for status_row in status_counts %}
@@ -82,13 +82,13 @@
                     </div>
                     <div class="col-md-2">
                       <p class="mb-1"><strong>Status:</strong></p>
-                      <span class="badge bg-{% if fleet['status'] == 'Active' %}success{% elif fleet['status'] == 'In Service' %}primary{% elif fleet['status'] == 'Decommissioned' %}danger{% else %}secondary{% endif %}">
+                      <span class="badge bg-{% if fleet['status'] == 'Active' %}success{% elif fleet['status'] == 'In Service' %}success{% elif fleet['status'] == 'Decommissioned' %}danger{% else %}secondary{% endif %}">
                         {{ fleet['status'] }}
                       </span>
                     </div>
                     <div class="col-md-2 text-end">
                       <!-- More Info Button -->
-                      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#fleetModal{{ fleet['fleet_id'] }}">
+                      <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#fleetModal{{ fleet['fleet_id'] }}">
                         More Info
                       </button>
                     </div>
@@ -124,7 +124,7 @@
                         <p><strong>Destination:</strong> {{ fleet['fleet_destination'] or 'N/A' }}</p>
                         <p><strong>Last Login:</strong> {{ fleet['last_login'] }}</p>
                         <p><strong>Current Status:</strong> 
-                          <span class="badge bg-{% if fleet['status'] == 'Active' %}success{% elif fleet['status'] == 'In Service' %}primary{% elif fleet['status'] == 'Decommissioned' %}danger{% else %}secondary{% endif %}">
+                          <span class="badge bg-{% if fleet['status'] == 'Active' %}success{% elif fleet['status'] == 'In Service' %}success{% elif fleet['status'] == 'Decommissioned' %}danger{% else %}secondary{% endif %}">
                             {{ fleet['status'] }}
                           </span>
                         </p>
