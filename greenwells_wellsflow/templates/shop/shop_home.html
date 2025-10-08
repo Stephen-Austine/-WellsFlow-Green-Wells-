@@ -5,9 +5,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>WellsFlow - Shop</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css  " rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css  ">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
   <style>
     /* Fixed navigation bar */
     .navbar {
@@ -66,6 +66,14 @@
     .product-item.hidden {
       display: none !important;
     }
+
+    /* small glass card placeholder */
+    .glass-card {
+      background: rgba(255,255,255,0.85);
+      border-radius: 12px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.04);
+      border: 1px solid rgba(0,0,0,0.03);
+    }
   </style>
 </head>
 <body>
@@ -94,7 +102,6 @@
             <li class="nav-item"><a class="nav-link" href="{{ url_for('finances') }}">Finances</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ url_for('reports') }}">Reports</a></li>
           {% else %}
-            <!-- Other employee roles -->
             <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ url_for('gasrefill.admin_gas_refill_dashboard') }}">Gas Refills</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ url_for('vehicles') }}">Fleet</a></li>
@@ -145,7 +152,6 @@
       </div>
     </div>
 
-
     <!-- Main Shop Section -->
     <div class="col-lg-7">
       
@@ -163,7 +169,7 @@
         {% endfor %}
       </div>
   
-          <!-- Flash Messages -->
+      <!-- Flash Messages -->
       <div class="container mt-3">
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
@@ -198,7 +204,6 @@
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <a href="#" class="btn btn-outline-secondary btn-sm">Wishlist</a>
                 <div class="quantity-selector">
-                  <!-- removed inline onclick handlers and used data-product-id instead -->
                   <button type="button"
                           class="btn btn-outline-secondary quantity-btn quantity-decrease"
                           data-product-id="{{ product['product_id'] }}">-</button>
@@ -215,7 +220,11 @@
                           data-product-id="{{ product['product_id'] }}">+</button>
                 </div>
               </div>
-              <form action="{{ url_for('shop.add_to_cart', product_id=product['product_id']) }}" method="post" class="d-grid">
+
+              <!-- Add to cart form: note the class 'add-to-cart-form' for JS syncing -->
+              <form action="{{ url_for('shop.add_to_cart', product_id=product['product_id']) }}"
+                    method="post"
+                    class="d-grid add-to-cart-form">
                 <input type="hidden" name="quantity" id="hidden-quantity-{{ product['product_id'] }}" value="1">
                 <button type="submit" class="btn btn-success btn-sm">Add to Cart</button>
               </form>
@@ -265,7 +274,6 @@
           <button type="submit" class="btn btn-warning w-100 mb-3">Clear Cart</button>
         </form>
 
-        <!-- Replace the existing View Cart button with this -->
         {% if current_user.is_authenticated %}
             <a href="{{ url_for('shop.cart') }}" class="btn btn-success w-100">View Cart</a>
         {% else %}
@@ -281,7 +289,7 @@
   </div>
 </div>
 {% endblock %}
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js  "></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   // Auto-dismiss flash messages
@@ -300,7 +308,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   })();
 
-  // Quantity buttons
+  // Quantity button handlers (increase/decrease)
   document.querySelectorAll('.quantity-increase').forEach(function(btn) {
     btn.addEventListener('click', function() {
       increaseQuantity(this.dataset.productId);
@@ -311,6 +319,8 @@ document.addEventListener('DOMContentLoaded', function() {
       decreaseQuantity(this.dataset.productId);
     });
   });
+
+  // Keep visible input change in sync with hidden field immediately on change
   document.querySelectorAll('.quantity-input').forEach(function(input) {
     input.addEventListener('change', function() {
       var productId = this.id.replace('quantity-', '');
@@ -320,6 +330,47 @@ document.addEventListener('DOMContentLoaded', function() {
       if (v > 100) v = 100;
       this.value = v;
       if (hidden) hidden.value = v;
+    });
+
+    // also sync on input to give instant feedback
+    input.addEventListener('input', function() {
+      var productId = this.id.replace('quantity-', '');
+      var hidden = document.getElementById('hidden-quantity-' + productId);
+      var v = parseInt(this.value, 10);
+      if (isNaN(v) || v < 1) v = 1;
+      if (v > 100) v = 100;
+      if (hidden) hidden.value = v;
+    });
+  });
+
+  // ensure forms submit the current visible quantity (covers typed-but-not-blurred case)
+  document.querySelectorAll('.add-to-cart-form').forEach(function(formEl) {
+    formEl.addEventListener('submit', function(e) {
+      var hidden = formEl.querySelector('input[type="hidden"][name="quantity"]');
+      if (!hidden) return;
+      var hidParts = hidden.id ? hidden.id.split('hidden-quantity-') : [];
+      var productId = hidParts.length === 2 ? hidParts[1] : null;
+
+      if (productId) {
+        var visible = document.getElementById('quantity-' + productId);
+        if (visible) {
+          var v = parseInt(visible.value, 10);
+          if (isNaN(v) || v < 1) v = 1;
+          if (v > 100) v = 100;
+          visible.value = v;
+          hidden.value = v;
+        }
+      } else {
+        // fallback: try to find any nearby .quantity-input and sync
+        var visibleFallback = formEl.closest('.product-item')?.querySelector('.quantity-input');
+        if (visibleFallback) {
+          var v2 = parseInt(visibleFallback.value, 10);
+          if (isNaN(v2) || v2 < 1) v2 = 1;
+          if (v2 > 100) v2 = 100;
+          visibleFallback.value = v2;
+          hidden.value = v2;
+        }
+      }
     });
   });
 
@@ -399,7 +450,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     for (let i = startPage; i <= endPage; i++) {
-      // use let so each handler captures the correct i
       paginationControlsEl.appendChild(makePageItem(i, i === currentPage, false, function() {
         showPage(i); generatePaginationControls();
       }));

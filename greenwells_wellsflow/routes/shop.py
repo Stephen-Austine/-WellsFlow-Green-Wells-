@@ -62,42 +62,55 @@ def shop_category(category):
 def add_to_cart(product_id):
     conn = get_db_connection()
     try:
-        product = conn.execute('SELECT * FROM Products WHERE product_id = ? AND status = "Not sold"', 
-                             (product_id,)).fetchone()
-        if product:
-            # Get user ID if user is logged in
-            user_id = getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None)
-            
-            # Use session cart for all users (both logged in and guests)
-            cart = session.get("cart", [])
-            
-            # Check if product already in cart
-            product_found = False
-            for item in cart:
-                if item["id"] == product_id:
-                    item["quantity"] = item.get("quantity", 1) + 1
-                    product_found = True
-                    break
-            
-            # If not found, add new item
-            if not product_found:
-                cart.append({
-                    "id": product['product_id'],
-                    "name": product['product_name'],
-                    "price": product['retail_price'],
-                    "quantity": 1
-                })
-            
-            session["cart"] = cart
-            session.modified = True
-            flash('Product added to cart!', 'success')
-        else:
+        product = conn.execute(
+            'SELECT * FROM Products WHERE product_id = ? AND status = "Not sold"',
+            (product_id,)
+        ).fetchone()
+
+        if not product:
             flash('Product not available.', 'danger')
+            return redirect(url_for('shop.shop_home'))
+
+        # read quantity from the submitted form, with safe fallback
+        try:
+            qty = int(request.form.get('quantity', 1))
+        except (ValueError, TypeError):
+            qty = 1
+        # clamp quantity to a sensible range
+        qty = max(1, min(qty, 100))
+
+        # Use session cart for all users (both logged in and guests)
+        cart = session.get("cart", [])
+
+        # Check if product already in cart
+        product_found = False
+        for item in cart:
+            if item["id"] == product_id:
+                # add the requested qty to existing quantity
+                item["quantity"] = item.get("quantity", 1) + qty
+                product_found = True
+                break
+
+        # If not found, add new item with requested qty
+        if not product_found:
+            cart.append({
+                "id": product['product_id'],
+                "name": product['product_name'],
+                "price": product['retail_price'],
+                "quantity": qty
+            })
+
+        session["cart"] = cart
+        session.modified = True
+        flash(f'Added {qty} × {product["product_name"]} to cart!', 'success')
+
     except sqlite3.OperationalError as e:
         flash('Database error: ' + str(e), 'danger')
     finally:
         conn.close()
+
     return redirect(url_for('shop.shop_home'))
+
 
 @shop.route('/cart')
 def cart():
