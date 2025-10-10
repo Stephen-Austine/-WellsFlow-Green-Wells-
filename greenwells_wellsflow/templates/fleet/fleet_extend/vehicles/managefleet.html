@@ -75,7 +75,7 @@
             <div class="card mt-2 fleet-item" 
                  data-id="{{ fleet['fleet_id'] }}" 
                  data-brand="{{ fleet['fleet_brand'] }}" 
-                 data-model="{{ fleet['fleet_model'] }}" 
+                 data-regno="{{ fleet['registration_number'] }}" 
                  data-category="{{ fleet['fleet_category'] }}" 
                  data-status="{{ fleet['status'] }}"
                  data-cargo="{{ fleet['cargo_type'] }}">
@@ -85,10 +85,10 @@
                     <!-- Fleet Info Columns -->
                     <div class="col-md-2">
                       <p class="mb-1"><strong>ID:</strong> {{ fleet['fleet_id'] }}</p>
-                      <p class="mb-1"><strong>Brand:</strong> {{ fleet['fleet_brand'] }}</p>
+                      <p class="mb-1"><strong>Reg no:</strong> {{ fleet['registration_number'] }}</p>
                     </div>
                     <div class="col-md-3">
-                      <p class="mb-1"><strong>Model:</strong> {{ fleet['fleet_model'] }}</p>
+                      <p class="mb-1"><strong>Brand:</strong> {{ fleet['fleet_brand'] }}</p>
                       <p class="mb-1"><strong>Category:</strong> {{ fleet['fleet_category'] }}</p>
                     </div>
                     <div class="col-md-2">
@@ -134,7 +134,7 @@
                         <p><strong>Fleet ID:</strong> {{ fleet['fleet_id'] }}</p>
                         <p><strong>Registration Number:</strong> {{ fleet['registration_number'] }}</p>
                         <p><strong>Brand:</strong> {{ fleet['fleet_brand'] }}</p>
-                        <p><strong>Model:</strong> {{ fleet['fleet_model'] }}</p>
+                        <p><strong>Model:</strong> {{ fleet['registration_number'] }}</p>
                         <p><strong>Category:</strong> {{ fleet['fleet_category'] }}</p>
                         <p><strong>Registration Date:</strong> {{ fleet['registration_date'] }}</p>
                         <p><strong>Mileage:</strong> {{ fleet['fleet_mileage'] }}</p>

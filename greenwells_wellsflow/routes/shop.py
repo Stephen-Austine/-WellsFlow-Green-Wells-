@@ -218,7 +218,7 @@ def checkout():
                 cart_id, 
                 0,  # employee_id = 0 means not processed yet
                 0,  # fleet_id = 0 means not assigned yet
-                'Stage 1',  # Default status is Stage 1
+                'Processing',  # Default status is Stage 1
                 customer_location,  # SET TO CUSTOMER LOCATION - THIS IS THE DESTINATION
                 0.0,  # product_arrival
                 'No OTP',  # otp
@@ -232,7 +232,7 @@ def checkout():
             
             # Clear session cart
             session.pop("cart", None)
-            flash('Order placed successfully! Your order is now in Stage 1 and being processed.', 'success')
+            flash('Order placed successfully! Your order is now being processed.', 'success')
             
         except Exception as e:
             if 'conn' in locals():

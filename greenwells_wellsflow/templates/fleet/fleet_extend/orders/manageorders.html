@@ -75,7 +75,7 @@
                     </div>
                     <div class="col-md-2">
                       <p class="mb-1"><strong>Status:</strong></p>
-                      <span class="badge bg-{% if order['status'] == 'Completed' %}success{% elif order['status'] == 'Cancelled' %}danger{% else %}warning{% endif %}">
+                      <span class="badge bg-{% if order['status'] == 'Completed' %}success{% elif order['status'] == 'Cancelled' %}danger{% elif order['status'] == 'In Transit' %}info{% elif order['status'] == 'Confirmed' %}primary{% elif order['status'] == 'Processing' %}warning{% else %}secondary{% endif %}">
                         {{ order['status'] }}
                       </span>
                     </div>
@@ -110,10 +110,31 @@
                         <p><strong>OTP:</strong> {{ order['otp'] }}</p>
                         <p><strong>Order Timestamp:</strong> {{ order['order_timestamp'] }}</p>
                         <p><strong>Status:</strong> 
-                          <span class="badge bg-{% if order['status'] == 'Completed' %}success{% elif order['status'] == 'Cancelled' %}danger{% else %}warning{% endif %}">
+                          <span class="badge bg-{% if order['status'] == 'Completed' %}success{% elif order['status'] == 'Cancelled' %}danger{% elif order['status'] == 'In Transit' %}info{% elif order['status'] == 'Confirmed' %}primary{% elif order['status'] == 'Processing' %}warning{% else %}secondary{% endif %}">
                             {{ order['status'] }}
                           </span>
                         </p>
+                                                <!-- Fleet Assignment Form -->
+                        <hr>
+                        <h6><strong>Assign Fleet Vehicle:</strong></h6>
+                        <form method="POST">
+                          <input type="hidden" name="order_id" value="{{ order['order_id'] }}">
+                          <input type="hidden" name="action" value="fleet">
+                          <div class="mb-3">
+                            <label for="fleetSelect{{ order['order_id'] }}" class="form-label">Select Fleet Vehicle:</label>
+                            <select class="form-select" id="fleetSelect{{ order['order_id'] }}" name="fleet_id">
+                              <option value="">-- Select Fleet --</option>
+                              {% for fleet in fleets %}
+                                <option value="{{ fleet['fleet_id'] }}" 
+                                        {% if fleet['fleet_id'] == order['fleet_id'] %}selected{% endif %}>
+                                  {{ fleet['registration_number'] }} - {{ fleet['fleet_brand'] }} {{ fleet['fleet_model'] }} 
+                                  ({{ fleet['first_name'] }} {{ fleet['last_name'] }})
+                                </option>
+                              {% endfor %}
+                            </select>
+                          </div>
+                          <button type="submit" class="btn btn-primary">Assign Fleet</button>
+                        </form>
                       </div>
                       <div class="col-md-6">                        
                         <!-- Cart Items Display -->
@@ -148,14 +169,16 @@
                         
                         <!-- Status Change Form -->
                         <hr>
+                        <h6><strong>Update Status:</strong></h6>
                         <form method="POST">
                           <input type="hidden" name="order_id" value="{{ order['order_id'] }}">
+                          <input type="hidden" name="action" value="status">
                           <div class="mb-3">
-                            <label for="statusSelect{{ order['order_id'] }}" class="form-label"><strong>Change Status:</strong></label>
+                            <label for="statusSelect{{ order['order_id'] }}" class="form-label">Change Status:</label>
                             <select class="form-select" id="statusSelect{{ order['order_id'] }}" name="status">
-                              <option value="Stage 1" {% if order['status'] == 'Stage 1' %}selected{% endif %}>Stage 1</option>
-                              <option value="Stage 2" {% if order['status'] == 'Stage 2' %}selected{% endif %}>Stage 2</option>
-                              <option value="Stage 3" {% if order['status'] == 'Stage 3' %}selected{% endif %}>Stage 3</option>
+                              <option value="Processing" {% if order['status'] == 'Processing' %}selected{% endif %}>Processing</option>
+                              <option value="Confirmed" {% if order['status'] == 'Confirmed' %}selected{% endif %}>Confirmed</option>
+                              <option value="In Transit" {% if order['status'] == 'In Transit' %}selected{% endif %}>In Transit</option>
                               <option value="Completed" {% if order['status'] == 'Completed' %}selected{% endif %}>Completed</option>
                               <option value="Cancelled" {% if order['status'] == 'Cancelled' %}selected{% endif %}>Cancelled</option>
                             </select>

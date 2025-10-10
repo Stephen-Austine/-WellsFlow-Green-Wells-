@@ -705,16 +705,38 @@ def ordersmanage():
 
     if request.method == 'POST':
         order_id = request.form.get('order_id')
-        new_status = request.form.get('status')
-
-        cursor.execute("UPDATE Orders SET status = ? WHERE order_id = ?", (new_status, order_id))
-        conn.commit()
-        flash("Order status updated successfully!", "success")
+        action = request.form.get('action')  # 'status' or 'fleet'
+        
+        if action == 'status':
+            new_status = request.form.get('status')
+            cursor.execute("UPDATE Orders SET status = ? WHERE order_id = ?", (new_status, order_id))
+            conn.commit()
+            flash("Order status updated successfully!", "success")
+        elif action == 'fleet':
+            fleet_id = request.form.get('fleet_id')
+            if fleet_id:
+                # Update fleet assignment and set status to 'In Transit'
+                cursor.execute("UPDATE Orders SET fleet_id = ?, status = 'In Transit' WHERE order_id = ?", (fleet_id, order_id))
+                conn.commit()
+                flash("Fleet assigned successfully and status set to In Transit!", "success")
+            else:
+                flash("Please select a fleet vehicle!", "error")
 
         redirect_url = url_for('ordersmanage')
         if filter_status:
             redirect_url += f'?status={filter_status}'
         return redirect(redirect_url)
+
+    # Get fleets with assigned drivers (status is 'Assigned')
+    cursor.execute("""
+        SELECT f.fleet_id, f.registration_number, f.fleet_brand, f.fleet_model, 
+               e.first_name, e.last_name
+        FROM Fleet f
+        LEFT JOIN Employees e ON f.employee_id = e.employee_id
+        WHERE f.status = 'Assigned' AND f.employee_id != '0' AND f.employee_id IS NOT NULL
+        ORDER BY f.registration_number
+    """)
+    fleets = cursor.fetchall()
 
     # Fetch orders with related information
     if filter_status:
@@ -828,6 +850,7 @@ def ordersmanage():
 
     return render_template("fleet/fleet_extend/orders/manageorders.html",
                            orders=processed_orders,
+                           fleets=fleets,
                            status_counts=status_counts,
                            current_filter=filter_status,
                            total_orders=total_orders)
