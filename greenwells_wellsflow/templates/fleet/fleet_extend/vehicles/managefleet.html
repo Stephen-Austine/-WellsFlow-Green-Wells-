@@ -38,6 +38,21 @@
         </a>
       </li>
     {% endfor %}
+    <!-- Add Unassigned status link -->
+    <li class="nav-item">
+      <a class="nav-link {% if current_filter == 'Unassigned' %}active{% endif %}" 
+         href="{{ url_for('vehiclesmanagefleet', status='Unassigned') }}">
+        Unassigned <span class="badge bg-secondary">
+          {% set unassigned_count = 0 %}
+          {% for status_row in status_counts %}
+            {% if status_row['status'] == 'Unassigned' %}
+              {% set unassigned_count = status_row['count'] %}
+            {% endif %}
+          {% endfor %}
+          {{ unassigned_count }}
+        </span>
+      </a>
+    </li>
   </ul>
 
   <!-- Flash Messages -->
@@ -82,7 +97,7 @@
                     </div>
                     <div class="col-md-2">
                       <p class="mb-1"><strong>Status:</strong></p>
-                      <span class="badge bg-{% if fleet['status'] == 'Active' %}success{% elif fleet['status'] == 'In Service' %}success{% elif fleet['status'] == 'Decommissioned' %}danger{% else %}secondary{% endif %}">
+                      <span class="badge bg-{% if fleet['status'] == 'Active' %}success{% elif fleet['status'] == 'In Service' %}success{% elif fleet['status'] == 'Decommissioned' %}danger{% elif fleet['status'] == 'Assigned' %}info{% elif fleet['status'] == 'Idle' %}primary{% elif fleet['status'] == 'Unassigned' %}warning{% else %}secondary{% endif %}">
                         {{ fleet['status'] }}
                       </span>
                     </div>
@@ -120,28 +135,65 @@
                         <p><strong>Chassis Number:</strong> {{ fleet['chassis_number'] }}</p>
                         <p><strong>Cargo Type:</strong> {{ fleet['cargo_type'] }}</p>
                         <p><strong>Max Capacity:</strong> {{ fleet['max_capacity'] }}</p>
-                        <p><strong>Employee ID:</strong> {{ fleet['employee_id'] }}</p>
+                        <p><strong>Driver:</strong> 
+                          {% if fleet['employee_id'] and fleet['employee_id'] != '0' and fleet['driver_first_name'] and fleet['driver_last_name'] %}
+                            {{ fleet['driver_first_name'] }} {{ fleet['driver_last_name'] }} (ID: {{ fleet['employee_id'] }})
+                          {% else %}
+                            <span class="text-muted">No Driver Assigned</span>
+                          {% endif %}
+                        </p>
                         <p><strong>Destination:</strong> {{ fleet['fleet_destination'] or 'N/A' }}</p>
                         <p><strong>Last Login:</strong> {{ fleet['last_login'] }}</p>
                         <p><strong>Current Status:</strong> 
-                          <span class="badge bg-{% if fleet['status'] == 'Active' %}success{% elif fleet['status'] == 'In Service' %}success{% elif fleet['status'] == 'Decommissioned' %}danger{% else %}secondary{% endif %}">
+                          <span class="badge bg-{% if fleet['status'] == 'Active' %}success{% elif fleet['status'] == 'In Service' %}success{% elif fleet['status'] == 'Decommissioned' %}danger{% elif fleet['status'] == 'Assigned' %}info{% elif fleet['status'] == 'Idle' %}primary{% elif fleet['status'] == 'Unassigned' %}warning{% else %}secondary{% endif %}">
                             {{ fleet['status'] }}
                           </span>
                         </p>
                       </div>
                     </div>
                     
-                    <!-- Status Change Form -->
+                    <!-- Driver Assignment Form -->
                     <hr>
+                    <h6>Assign/Update Driver</h6>
                     <form method="POST">
                       <input type="hidden" name="fleet_id" value="{{ fleet['fleet_id'] }}">
+                      <input type="hidden" name="action" value="driver">
                       <div class="mb-3">
-                        <label for="statusSelect{{ fleet['fleet_id'] }}" class="form-label"><strong>Change Status:</strong></label>
+                        <label for="driverSelect{{ fleet['fleet_id'] }}" class="form-label">Assign Driver:</label>
+                        <select class="form-select" id="driverSelect{{ fleet['fleet_id'] }}" name="employee_id">
+                          <option value="0" {% if fleet['employee_id'] == '0' or not fleet['employee_id'] %}selected{% endif %}>-- No Driver --</option>
+                          {% for driver in drivers %}
+                            <option value="{{ driver['employee_id'] }}" 
+                                    {% if driver['employee_id'] == fleet['employee_id'] %}selected{% endif %}>
+                              {{ driver['first_name'] }} {{ driver['last_name'] }} (ID: {{ driver['employee_id'] }})
+                            </option>
+                          {% endfor %}
+                        </select>
+                        {% if fleet['status'] in ['Decommissioned', 'Active', 'In Service'] %}
+                          <small class="text-muted">Driver assignment disabled for {{ fleet['status'] }} fleets</small>
+                        {% endif %}
+                      </div>
+                      <button type="submit" class="btn btn-primary" 
+                              {% if fleet['status'] in ['Decommissioned', 'Active', 'In Service'] %}disabled{% endif %}>
+                        {% if fleet['employee_id'] and fleet['employee_id'] != '0' %}Update Driver{% else %}Assign Driver{% endif %}
+                      </button>
+                    </form>
+                    
+                    <!-- Status Update Form -->
+                    <hr>
+                    <h6>Update Status</h6>
+                    <form method="POST" onsubmit="return confirmStatusChange(this)">
+                      <input type="hidden" name="fleet_id" value="{{ fleet['fleet_id'] }}">
+                      <input type="hidden" name="action" value="status">
+                      <div class="mb-3">
+                        <label for="statusSelect{{ fleet['fleet_id'] }}" class="form-label">Update Status:</label>
                         <select class="form-select" id="statusSelect{{ fleet['fleet_id'] }}" name="status">
                           <option value="Active" {% if fleet['status'] == 'Active' %}selected{% endif %}>Active</option>
                           <option value="In Service" {% if fleet['status'] == 'In Service' %}selected{% endif %}>In Service</option>
                           <option value="Decommissioned" {% if fleet['status'] == 'Decommissioned' %}selected{% endif %}>Decommissioned</option>
+                          <option value="Assigned" {% if fleet['status'] == 'Assigned' %}selected{% endif %}>Assigned</option>
                           <option value="Idle" {% if fleet['status'] == 'Idle' %}selected{% endif %}>Idle</option>
+                          <option value="Unassigned" {% if fleet['status'] == 'Unassigned' %}selected{% endif %}>Unassigned</option>
                         </select>
                       </div>
                       <button type="submit" class="btn btn-success">Update Status</button>
@@ -399,6 +451,17 @@
     // Initialize pagination on page load
     initPagination();
   });
+  
+  // Confirmation function for status change
+  function confirmStatusChange(form) {
+    const statusSelect = form.querySelector('select[name="status"]');
+    const selectedStatus = statusSelect.value;
+    
+    if (selectedStatus === 'Decommissioned') {
+      return confirm('Are you sure you want to decommission this fleet? The driver will be automatically unassigned.');
+    }
+    return true;
+  }
 </script>
 
 {% endblock %}

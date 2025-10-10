@@ -148,7 +148,6 @@ def vehicles():
     return render_template("fleet/adminside_fleet/vehicles.html")
 
 
-# Updated route in app.py
 @app.route("/vehiclesmanagefleet", methods=['GET', 'POST'])
 @role_required(['FleetManager', 'Admin', 'Driver'])
 def vehiclesmanagefleet():
@@ -160,24 +159,83 @@ def vehiclesmanagefleet():
 
     if request.method == 'POST':
         fleet_id = request.form.get('fleet_id')
-        new_status = request.form.get('status')
-
-        cursor.execute("UPDATE Fleet SET status = ? WHERE fleet_id = ?", (new_status, fleet_id))
-        conn.commit()
-        flash("Fleet status updated successfully!", "success")
+        action = request.form.get('action')  # 'status' or 'driver'
+        
+        if action == 'status':
+            new_status = request.form.get('status')
+            
+            if new_status == 'Decommissioned':
+                # When setting status to Decommissioned, also remove the driver
+                cursor.execute("UPDATE Fleet SET status = ?, employee_id = '0' WHERE fleet_id = ?", (new_status, fleet_id))
+                conn.commit()
+                flash("Fleet status updated to Decommissioned and driver unassigned!", "success")
+            else:
+                cursor.execute("UPDATE Fleet SET status = ? WHERE fleet_id = ?", (new_status, fleet_id))
+                conn.commit()
+                flash("Fleet status updated successfully!", "success")
+                
+        elif action == 'driver':
+            employee_id = request.form.get('employee_id')
+            
+            # Check if fleet is in a valid status for driver assignment
+            cursor.execute("SELECT status FROM Fleet WHERE fleet_id = ?", (fleet_id,))
+            fleet_status = cursor.fetchone()['status']
+            
+            if employee_id == '0':  # No driver selected
+                # Remove driver assignment
+                cursor.execute("UPDATE Fleet SET employee_id = '0' WHERE fleet_id = ?", (fleet_id,))
+                # Set status to 'Unassigned' when removing driver
+                cursor.execute("UPDATE Fleet SET status = 'Unassigned' WHERE fleet_id = ?", (fleet_id,))
+                conn.commit()
+                flash("Driver unassigned successfully and status set to Unassigned!", "success")
+            elif fleet_status in ['Decommissioned', 'Active', 'In Service']:
+                flash(f"Cannot assign driver to a fleet with status '{fleet_status}'. Fleet must be Idle or Unassigned.", "error")
+            else:
+                # Check if this driver is already assigned to another fleet
+                cursor.execute("SELECT fleet_id FROM Fleet WHERE employee_id = ? AND fleet_id != ?", (employee_id, fleet_id))
+                existing_assignment = cursor.fetchone()
+                
+                if existing_assignment:
+                    flash("Driver is already assigned to another fleet. Please unassign first.", "error")
+                else:
+                    cursor.execute("UPDATE Fleet SET employee_id = ? WHERE fleet_id = ?", (employee_id, fleet_id))
+                    # Set status to 'Assigned' when assigning a driver
+                    cursor.execute("UPDATE Fleet SET status = 'Assigned' WHERE fleet_id = ?", (fleet_id,))
+                    conn.commit()
+                    flash("Driver assigned successfully and status set to Assigned!", "success")
 
         redirect_url = url_for('vehiclesmanagefleet')
         if filter_status:
             redirect_url += f'?status={filter_status}'
         return redirect(redirect_url)
 
+    # Get all employees with role 'Driver'
+    cursor.execute("SELECT employee_id, first_name, last_name FROM Employees WHERE role = 'Driver'")
+    drivers = cursor.fetchall()
+
+    # Get fleet data with driver names
     if filter_status:
-        cursor.execute("SELECT * FROM Fleet WHERE status = ?", (filter_status,))
+        cursor.execute("""
+            SELECT f.*, 
+                   e.first_name as driver_first_name, 
+                   e.last_name as driver_last_name
+            FROM Fleet f
+            LEFT JOIN Employees e ON f.employee_id = e.employee_id
+            WHERE f.status = ?
+            ORDER BY f.fleet_id
+        """, (filter_status,))
     else:
-        cursor.execute("SELECT * FROM Fleet")
+        cursor.execute("""
+            SELECT f.*, 
+                   e.first_name as driver_first_name, 
+                   e.last_name as driver_last_name
+            FROM Fleet f
+            LEFT JOIN Employees e ON f.employee_id = e.employee_id
+            ORDER BY f.fleet_id
+        """)
     fleets = cursor.fetchall()
 
-    # Get status counts
+    # Get status counts (including the new 'Assigned' status)
     cursor.execute("""
         SELECT status, COUNT(*) as count 
         FROM Fleet 
@@ -193,6 +251,7 @@ def vehiclesmanagefleet():
 
     return render_template("fleet/fleet_extend/vehicles/managefleet.html",
                            fleets=fleets,
+                           drivers=drivers,
                            status_counts=status_counts,
                            current_filter=filter_status,
                            total_fleets=total_fleets)
@@ -215,7 +274,7 @@ def vehiclesaddnew():
         max_capacity = request.form.get('max_capacity')
         
         # Default values as per your requirements
-        status = 'Idle'  # Default status is Idle
+        status = 'Unassigned'  # Default status is Unassigned
         
         # Get the current logged-in user's ID
         # Based on your load_user function, the ID is stored in user_id for Users 
@@ -642,9 +701,9 @@ def ordersmanage():
 @login_required
 def vieworders():
     # Only allow customers to view their own orders
-    if current_user.role != "customer":
-        flash("Access denied. Only customers can view their orders.", "danger")
-        return redirect(url_for('dashboard'))  # or appropriate redirect
+    # if current_user.role != "customer":
+    #     flash("Access denied. Only customers can view their orders.", "danger")
+    #     return redirect(url_for('dashboard'))  # or appropriate redirect
     
     conn = sqlite3.connect(shopfleetdb)
     conn.row_factory = sqlite3.Row
