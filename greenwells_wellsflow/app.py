@@ -148,6 +148,80 @@ def vehicles():
     return render_template("fleet/adminside_fleet/vehicles.html")
 
 
+@app.route("/editfleet/<int:fleet_id>", methods=['GET', 'POST'])
+@role_required(['FleetManager', 'Admin', 'Driver'])
+def editfleet(fleet_id):
+    conn = sqlite3.connect(shopfleetdb)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    # Get the fleet data
+    cursor.execute("""
+        SELECT f.*, 
+               e.first_name as driver_first_name, 
+               e.last_name as driver_last_name
+        FROM Fleet f
+        LEFT JOIN Employees e ON f.employee_id = e.employee_id
+        WHERE f.fleet_id = ?
+    """, (fleet_id,))
+    fleet = cursor.fetchone()
+    
+    if not fleet:
+        flash("Fleet not found!", "error")
+        return redirect(url_for('vehiclesmanagefleet'))
+
+    # Check if fleet has a driver assigned
+    if fleet['employee_id'] and fleet['employee_id'] != '0':
+        flash("Cannot edit a fleet that has a driver assigned!", "error")
+        return redirect(url_for('vehiclesmanagefleet'))
+
+    if request.method == 'POST':
+        # Get form data
+        registration_number = request.form.get('registration_number')
+        fleet_brand = request.form.get('fleet_brand')
+        fleet_model = request.form.get('fleet_model')
+        fleet_category = request.form.get('fleet_category')
+        registration_date = request.form.get('registration_date')
+        fleet_mileage = request.form.get('fleet_mileage')
+        chassis_number = request.form.get('chassis_number')
+        cargo_type = request.form.get('cargo_type')
+        max_capacity = request.form.get('max_capacity')
+
+        # Validate required fields
+        if not all([registration_number, fleet_brand, fleet_model, fleet_category, 
+                   registration_date, fleet_mileage, chassis_number, cargo_type, max_capacity]):
+            flash("All fields are required!", "error")
+        else:
+            try:
+                # Update the fleet record
+                cursor.execute("""
+                    UPDATE Fleet 
+                    SET registration_number = ?, fleet_brand = ?, fleet_model = ?, 
+                        fleet_category = ?, registration_date = ?, fleet_mileage = ?, 
+                        chassis_number = ?, cargo_type = ?, max_capacity = ?
+                    WHERE fleet_id = ?
+                """, (registration_number, fleet_brand, fleet_model, fleet_category, 
+                      registration_date, fleet_mileage, chassis_number, cargo_type, 
+                      max_capacity, fleet_id))
+                
+                # For employees, the first parameter in UserObject becomes the user_id attribute
+                # In your auth.py: UserObject(employee_data['employee_id'], ...)
+                user_id = current_user.user_id  # Use user_id instead of id
+                
+                # Set the current user as the new driver and set status to 'Assigned'
+                cursor.execute("UPDATE Fleet SET employee_id = ?, status = 'Assigned' WHERE fleet_id = ?", 
+                              (user_id, fleet_id))
+                
+                conn.commit()
+                flash("Fleet updated successfully and assigned to you!", "success")
+                return redirect(url_for('vehiclesmanagefleet'))
+            except sqlite3.Error as e:
+                flash(f"Database error: {str(e)}", "error")
+
+    conn.close()
+
+    return render_template("fleet/fleet_extend/vehicles/editfleet.html", fleet=fleet)
+
 @app.route("/vehiclesmanagefleet", methods=['GET', 'POST'])
 @role_required(['FleetManager', 'Admin', 'Driver'])
 def vehiclesmanagefleet():
@@ -255,7 +329,6 @@ def vehiclesmanagefleet():
                            status_counts=status_counts,
                            current_filter=filter_status,
                            total_fleets=total_fleets)
-
 
 # Updated route in app.py
 @app.route("/vehiclesaddnew", methods=['GET', 'POST'])

@@ -91,15 +91,23 @@
                       <p class="mb-1"><strong>Model:</strong> {{ fleet['fleet_model'] }}</p>
                       <p class="mb-1"><strong>Category:</strong> {{ fleet['fleet_category'] }}</p>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                       <p class="mb-1"><strong>Cargo Type:</strong> {{ fleet['cargo_type'] }}</p>
                       <p class="mb-1"><strong>Mileage:</strong> {{ fleet['fleet_mileage'] }}</p>
                     </div>
-                    <div class="col-md-2">
-                      <p class="mb-1"><strong>Status:</strong></p>
-                      <span class="badge bg-{% if fleet['status'] == 'Active' %}success{% elif fleet['status'] == 'In Service' %}success{% elif fleet['status'] == 'Decommissioned' %}danger{% elif fleet['status'] == 'Assigned' %}info{% elif fleet['status'] == 'Idle' %}primary{% elif fleet['status'] == 'Unassigned' %}warning{% else %}secondary{% endif %}">
-                        {{ fleet['status'] }}
-                      </span>
+                    <div class="col-md-3">
+                      <p class="mb-1"><strong>Driver:</strong> 
+                        {% if fleet['employee_id'] and fleet['employee_id'] != '0' and fleet['driver_first_name'] and fleet['driver_last_name'] %}
+                          {{ fleet['driver_first_name'] }} {{ fleet['driver_last_name'] }}
+                        {% else %}
+                          <span class="text-muted">No Driver</span>
+                        {% endif %}
+                      </p>
+                      <p class="mb-1"><strong>Status:</strong> 
+                        <span class="badge bg-{% if fleet['status'] == 'Active' %}success{% elif fleet['status'] == 'In Service' %}success{% elif fleet['status'] == 'Decommissioned' %}danger{% elif fleet['status'] == 'Assigned' %}info{% elif fleet['status'] == 'Idle' %}primary{% elif fleet['status'] == 'Unassigned' %}warning{% else %}secondary{% endif %}">
+                          {{ fleet['status'] }}
+                        </span>
+                      </p>
                     </div>
                     <div class="col-md-2 text-end">
                       <!-- More Info Button -->
@@ -153,53 +161,64 @@
                     </div>
                     
                     <!-- Driver Assignment Form -->
-                    <hr>
-                    <h6>Assign/Update Driver</h6>
-                    <form method="POST">
-                      <input type="hidden" name="fleet_id" value="{{ fleet['fleet_id'] }}">
-                      <input type="hidden" name="action" value="driver">
-                      <div class="mb-3">
-                        <label for="driverSelect{{ fleet['fleet_id'] }}" class="form-label">Assign Driver:</label>
-                        <select class="form-select" id="driverSelect{{ fleet['fleet_id'] }}" name="employee_id">
-                          <option value="0" {% if fleet['employee_id'] == '0' or not fleet['employee_id'] %}selected{% endif %}>-- No Driver --</option>
-                          {% for driver in drivers %}
-                            <option value="{{ driver['employee_id'] }}" 
-                                    {% if driver['employee_id'] == fleet['employee_id'] %}selected{% endif %}>
-                              {{ driver['first_name'] }} {{ driver['last_name'] }} (ID: {{ driver['employee_id'] }})
-                            </option>
-                          {% endfor %}
-                        </select>
-                        {% if fleet['status'] in ['Decommissioned', 'Active', 'In Service'] %}
-                          <small class="text-muted">Driver assignment disabled for {{ fleet['status'] }} fleets</small>
-                        {% endif %}
+                     <section class="row">
+                      <div class="col-md-6">
+                        <hr>
+                        <h6>Assign/Update Driver</h6>
+                        <form method="POST">
+                          <input type="hidden" name="fleet_id" value="{{ fleet['fleet_id'] }}">
+                          <input type="hidden" name="action" value="driver">
+                          <div class="mb-3">
+                            <label for="driverSelect{{ fleet['fleet_id'] }}" class="form-label">Assign Driver:</label>
+                            <select class="form-select" id="driverSelect{{ fleet['fleet_id'] }}" name="employee_id">
+                              <option value="0" {% if fleet['employee_id'] == '0' or not fleet['employee_id'] %}selected{% endif %}>-- No Driver --</option>
+                              {% for driver in drivers %}
+                                <option value="{{ driver['employee_id'] }}" 
+                                        {% if driver['employee_id'] == fleet['employee_id'] %}selected{% endif %}>
+                                  {{ driver['first_name'] }} {{ driver['last_name'] }} (ID: {{ driver['employee_id'] }})
+                                </option>
+                              {% endfor %}
+                            </select>
+                            {% if fleet['status'] in ['Decommissioned', 'Active', 'In Service'] %}
+                              <small class="text-muted">Driver assignment disabled for {{ fleet['status'] }} fleets</small>
+                            {% endif %}
+                          </div>
+                          <button type="submit" class="btn btn-primary" 
+                                  {% if fleet['status'] in ['Decommissioned', 'Active', 'In Service'] %}disabled{% endif %}>
+                            {% if fleet['employee_id'] and fleet['employee_id'] != '0' %}Update Driver{% else %}Assign Driver{% endif %}
+                          </button>
+                        </form>
                       </div>
-                      <button type="submit" class="btn btn-primary" 
-                              {% if fleet['status'] in ['Decommissioned', 'Active', 'In Service'] %}disabled{% endif %}>
-                        {% if fleet['employee_id'] and fleet['employee_id'] != '0' %}Update Driver{% else %}Assign Driver{% endif %}
-                      </button>
-                    </form>
-                    
-                    <!-- Status Update Form -->
-                    <hr>
-                    <h6>Update Status</h6>
-                    <form method="POST" onsubmit="return confirmStatusChange(this)">
-                      <input type="hidden" name="fleet_id" value="{{ fleet['fleet_id'] }}">
-                      <input type="hidden" name="action" value="status">
-                      <div class="mb-3">
-                        <label for="statusSelect{{ fleet['fleet_id'] }}" class="form-label">Update Status:</label>
-                        <select class="form-select" id="statusSelect{{ fleet['fleet_id'] }}" name="status">
-                          <option value="Active" {% if fleet['status'] == 'Active' %}selected{% endif %}>Active</option>
-                          <option value="In Service" {% if fleet['status'] == 'In Service' %}selected{% endif %}>In Service</option>
-                          <option value="Decommissioned" {% if fleet['status'] == 'Decommissioned' %}selected{% endif %}>Decommissioned</option>
-                          <option value="Assigned" {% if fleet['status'] == 'Assigned' %}selected{% endif %}>Assigned</option>
-                          <option value="Idle" {% if fleet['status'] == 'Idle' %}selected{% endif %}>Idle</option>
-                          <option value="Unassigned" {% if fleet['status'] == 'Unassigned' %}selected{% endif %}>Unassigned</option>
-                        </select>
+                      <div class="col-md-6">
+                        <!-- Status Update Form -->
+                        <hr>
+                        <h6>Update Status</h6>
+                        <form method="POST" onsubmit="return confirmStatusChange(this)">
+                          <input type="hidden" name="fleet_id" value="{{ fleet['fleet_id'] }}">
+                          <input type="hidden" name="action" value="status">
+                          <div class="mb-3">
+                            <label for="statusSelect{{ fleet['fleet_id'] }}" class="form-label">Update Status:</label>
+                            <select class="form-select" id="statusSelect{{ fleet['fleet_id'] }}" name="status">
+                              <option value="Active" {% if fleet['status'] == 'Active' %}selected{% endif %}>Active</option>
+                              <option value="In Service" {% if fleet['status'] == 'In Service' %}selected{% endif %}>In Service</option>
+                              <option value="Decommissioned" {% if fleet['status'] == 'Decommissioned' %}selected{% endif %}>Decommissioned</option>
+                              <option value="Assigned" {% if fleet['status'] == 'Assigned' %}selected{% endif %}>Assigned</option>
+                              <option value="Idle" {% if fleet['status'] == 'Idle' %}selected{% endif %}>Idle</option>
+                              <option value="Unassigned" {% if fleet['status'] == 'Unassigned' %}selected{% endif %}>Unassigned</option>
+                            </select>
+                          </div>
+                          <button type="submit" class="btn btn-success">Update Status</button>
+                        </form>
                       </div>
-                      <button type="submit" class="btn btn-success">Update Status</button>
-                    </form>
+                     </section>
+
                   </div>
                   <div class="modal-footer">
+                    <a href="{{ url_for('editfleet', fleet_id=fleet['fleet_id']) }}" 
+                      class="btn btn-warning" 
+                      {% if fleet['employee_id'] and fleet['employee_id'] != '0' %}disabled title="Cannot edit a fleet with a driver assigned"{% endif %}>
+                      Edit
+                    </a>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                   </div>
                 </div>
