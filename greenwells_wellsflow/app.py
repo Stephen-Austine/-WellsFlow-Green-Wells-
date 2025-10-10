@@ -395,7 +395,70 @@ def vehiclesaddnew():
     return render_template("fleet/fleet_extend/vehicles/addnew.html")
 
 
-# Updated route in app.py
+@app.route("/editproduction/<int:product_id>", methods=['GET', 'POST'])
+@role_required(['ProductManager', 'Admin'])
+def editproduction(product_id):
+    conn = sqlite3.connect(shopfleetdb)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    # Get the product data
+    cursor.execute("""
+        SELECT p.*, e.first_name, e.last_name 
+        FROM Products p 
+        LEFT JOIN Employees e ON p.employee_id = e.employee_id
+        WHERE p.product_id = ?
+    """, (product_id,))
+    product = cursor.fetchone()
+    
+    if not product:
+        flash("Product not found!", "error")
+        return redirect(url_for('manageproduction'))
+
+    if request.method == 'POST':
+        # Get form data
+        product_name = request.form.get('product_name')
+        product_category = request.form.get('product_category')
+        product_description = request.form.get('product_description')
+        product_quantity = request.form.get('product_quantity')
+        product_cost = request.form.get('product_cost')
+        retail_price = request.form.get('retail_price')
+        product_location = request.form.get('product_location')
+        location_description = request.form.get('location_description')
+
+        # Validate required fields
+        if not all([product_name, product_category, product_description, 
+                   product_quantity, product_cost, retail_price, product_location]):
+            flash("All required fields must be filled!", "error")
+        else:
+            try:
+                # Update the product record
+                cursor.execute("""
+                    UPDATE Products 
+                    SET product_name = ?, product_category = ?, product_description = ?, 
+                        product_quantity = ?, product_cost = ?, retail_price = ?, 
+                        product_location = ?, location_description = ?
+                    WHERE product_id = ?
+                """, (product_name, product_category, product_description, 
+                      product_quantity, product_cost, retail_price, 
+                      product_location, location_description, product_id))
+                
+                # Set the current user as the editor (using employee_id)
+                employee_id = current_user.user_id  # This is actually the employee_id for employees
+                cursor.execute("UPDATE Products SET employee_id = ? WHERE product_id = ?", 
+                              (employee_id, product_id))
+                
+                conn.commit()
+                flash("Product updated successfully and assigned to you!", "success")
+                return redirect(url_for('manageproduction'))
+            except sqlite3.Error as e:
+                flash(f"Database error: {str(e)}", "error")
+
+    conn.close()
+
+    return render_template("fleet/fleet_extend/production/editproduction.html", product=product)
+
+
 @app.route("/manageproduction", methods=['GET', 'POST'])
 @role_required(['ProductManager', 'Admin'])
 def manageproduction():
@@ -422,7 +485,7 @@ def manageproduction():
         return redirect(redirect_url)
 
     # Build query based on filters
-    query = "SELECT p.*, u.first_name, u.last_name FROM Products p LEFT JOIN Users u ON p.user_id = u.user_id"
+    query = "SELECT p.*, e.first_name, e.last_name FROM Products p LEFT JOIN Employees e ON p.employee_id = e.employee_id"
     params = []
     
     if filter_category:

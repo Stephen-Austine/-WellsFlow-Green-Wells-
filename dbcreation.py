@@ -12,10 +12,6 @@ sql_file = "shopfleet.sql"
 conn = sqlite3.connect(db_name)
 cursor = conn.cursor()
 
-# Run schema (if you have a separate .sql file)
-# If not, we'll define tables inline below — but based on your usage, you likely don't use shopfleet.sql
-# So we'll skip executing it and rely on programmatic table creation
-
 # Utility: hash password
 def hash_password(plain_text_password: str) -> str:
     return bcrypt.hashpw(plain_text_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -76,12 +72,12 @@ CREATE TABLE IF NOT EXISTS `Products` (
     `product_quantity` INTEGER NOT NULL,
     `product_cost` INTEGER NOT NULL,
     `retail_price` INTEGER NOT NULL,
-    `user_id` INTEGER,
+    `employee_id` INTEGER,  -- Changed from user_id to employee_id
     `product_registration` TEXT NOT NULL,
     `product_location` TEXT NOT NULL,
     `location_description` TEXT,
     `status` TEXT NOT NULL DEFAULT 'Not sold',
-    FOREIGN KEY(`user_id`) REFERENCES `Users`(`user_id`)
+    FOREIGN KEY(`employee_id`) REFERENCES `Employees`(`employee_id`)  -- Updated foreign key
 );
 """)
 
@@ -242,7 +238,7 @@ for category, subs in categories.items():
             INSERT OR IGNORE INTO Products (
                 product_id, product_name, product_category, product_description,
                 product_image, product_quantity, product_cost, retail_price,
-                user_id, product_registration, product_location, location_description, status
+                employee_id, product_registration, product_location, location_description, status
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 product_id,
@@ -253,7 +249,7 @@ for category, subs in categories.items():
                 random.randint(10, 100),
                 random.randint(500, 2000),
                 random.randint(2500, 5000),
-                BASE_USER + random.randint(1, 5),
+                BASE_EMPLOYEE + random.randint(2, 10),  # Changed to employee_id
                 f"REG-{product_id:09d}",
                 "Nairobi Depot",
                 f"{sub} storage section",
@@ -382,3 +378,4 @@ conn.close()
 
 print(f"Database '{db_name}' created successfully with namespaced IDs.")
 print(f"✅ Gas Refill Orders table added with sample data (IDs start at {BASE_GAS_REFILL}).")
+print(f"✅ Products table now references employee_id instead of user_id.")
