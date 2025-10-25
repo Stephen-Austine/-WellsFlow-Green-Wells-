@@ -18,7 +18,7 @@ def get_db_connection():
 def employees_home():
     if current_user.role != "Admin":
         flash("⛔ Access denied. Admins only.", "error")
-        return redirect(url_for("home"))
+        return redirect(url_for("dashboard"))
 
     search = request.args.get("search", "")
     filter_role = request.args.get("filter", "")
@@ -121,7 +121,6 @@ def employees_home():
         total_pages=total_pages
     )
 
-
 # --- Add Employee ---
 @employees_bp.route("/employees/add", methods=["GET", "POST"])
 @login_required
@@ -136,18 +135,46 @@ def add_employee():
         role = request.form["role"]
         email = request.form["email"]
         phone_number = request.form.get("phone_number", "")
+        location = request.form.get("location", "")  # Get location from form
+        password = request.form["password"]  # Get password from form
+        generate_otp = request.form.get("generate_otp")  # Check if OTP should be generated
+
+        # Hash the password
+        import bcrypt
+        hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        
+        # Generate OTP if requested
+        import random
+        import time
+        otp = str(random.randint(100000, 999999)) if generate_otp else "000000"
+        otp_timestamp = time.time() if generate_otp else 0.0
 
         conn = get_db_connection()
         try:
+            # Insert with all required fields including password, location, otp, etc.
             conn.execute(
-                "INSERT INTO Employees (first_name, last_name, role, email, phone_number) VALUES (?, ?, ?, ?, ?)",
-                (first_name, last_name, role, email, phone_number)
+                """INSERT INTO Employees (
+                    first_name, last_name, role, email, phone_number, password, 
+                    otp, otp_timestamp, location, status, last_login
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    first_name, last_name, role, email, phone_number, 
+                    hashed_password, otp, otp_timestamp, location, 
+                    "Active", time.time()  # status and last_login
+                )
             )
             conn.commit()
             flash("✅ Employee added successfully!", "success")
             return redirect(url_for("employees.employees_home"))
-        except sqlite3.IntegrityError:
-            flash("⚠️ Email already exists.", "error")
+        except sqlite3.IntegrityError as e:
+            if "email" in str(e):
+                flash("❌ Email already exists. Please use a unique email.", "error")
+            else:
+                flash(f"❌ Error adding employee: {str(e)}", "error")
+            print(e)
+        except Exception as e:
+            flash(f"❌ Error adding employee: {str(e)}", "error")
+            print(e)
         finally:
             conn.close()
 

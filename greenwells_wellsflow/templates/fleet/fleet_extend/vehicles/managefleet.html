@@ -25,34 +25,19 @@
   <!-- Status Navbar -->
   <ul class="nav nav-tabs mb-3">
     <li class="nav-item">
-      <a class="nav-link {% if not current_filter %}active{% endif %}" href="{{ url_for('vehiclesmanagefleet') }}">
+      <a class="nav-link {% if not current_filter %}active{% endif %}" href="{{ url_for('vehiclesmanagefleet') }}" style="color: green;">
         All Fleets 
         <span class="badge bg-success">{{ total_fleets }}</span>
       </a>
     </li>
     {% for status_row in status_counts %}
       <li class="nav-item">
-        <a class="nav-link {% if current_filter == status_row['status'] %}active{% endif %}" 
+        <a class="nav-link {% if current_filter == status_row['status'] %}active{% endif %}" style="color: green;"
            href="{{ url_for('vehiclesmanagefleet', status=status_row['status']) }}">
           {{ status_row['status'] }} <span class="badge bg-secondary">{{ status_row['count'] }}</span>
         </a>
       </li>
     {% endfor %}
-    <!-- Add Unassigned status link -->
-    <li class="nav-item">
-      <a class="nav-link {% if current_filter == 'Unassigned' %}active{% endif %}" 
-         href="{{ url_for('vehiclesmanagefleet', status='Unassigned') }}">
-        Unassigned <span class="badge bg-secondary">
-          {% set unassigned_count = 0 %}
-          {% for status_row in status_counts %}
-            {% if status_row['status'] == 'Unassigned' %}
-              {% set unassigned_count = status_row['count'] %}
-            {% endif %}
-          {% endfor %}
-          {{ unassigned_count }}
-        </span>
-      </a>
-    </li>
   </ul>
 
   <!-- Flash Messages -->

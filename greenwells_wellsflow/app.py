@@ -21,7 +21,7 @@ def role_required(allowed_roles):
             
             if not hasattr(current_user, 'role'):
                 flash('Access denied: Role information not available.', 'danger')
-                return redirect(url_for('home'))
+                return redirect(url_for('dashboard'))
             
             user_role = current_user.role
             
@@ -45,7 +45,7 @@ def role_required(allowed_roles):
                     return redirect(url_for("finances"))
                 else:
                     # Default redirect for unknown roles or customer
-                    return redirect(url_for("home"))
+                    return redirect(url_for("dashboard"))
             
             return f(*args, **kwargs)
         return decorated_function
@@ -368,6 +368,15 @@ def vehiclesaddnew():
             conn = sqlite3.connect(shopfleetdb)
             cursor = conn.cursor()
             
+            # Check if registration number already exists
+            cursor.execute("SELECT registration_number FROM Fleet WHERE registration_number = ?", (registration_number,))
+            existing_vehicle = cursor.fetchone()
+            
+            if existing_vehicle:
+                flash(f"Registration number '{registration_number}' already exists. Please use a unique registration number.", "danger")
+                conn.close()
+                return redirect(url_for('vehiclesaddnew'))
+            
             # Insert new vehicle into Fleet table
             cursor.execute("""
                 INSERT INTO Fleet (
@@ -389,11 +398,11 @@ def vehiclesaddnew():
             
         except Exception as e:
             flash(f"Error adding vehicle: {str(e)}", "danger")
+            print(e)
             return redirect(url_for('vehiclesaddnew'))
     
     # For GET request, no need to fetch employees since it's auto-assigned
     return render_template("fleet/fleet_extend/vehicles/addnew.html")
-
 
 @app.route("/editproduction/<int:product_id>", methods=['GET', 'POST'])
 @role_required(['ProductManager', 'Admin'])
@@ -543,24 +552,12 @@ MAX_FILE_SIZE = 16 * 1024 * 1024  # 16MB max file size
 # Make sure the upload folder exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Update this part in your addnewproduction route
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route("/addnewproduction", methods=['GET', 'POST'])
 @role_required(['ProductManager', 'Admin'])
 def addnewproduction():
-    # Update the upload folder path
-    UPLOAD_FOLDER = '../-WellsFlow-Green-Wells-/greenwells_wellsflow/static/uploads'
-    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-    MAX_FILE_SIZE = 16 * 1024 * 1024  # 16MB max file size
-
-    # Make sure the upload folder exists
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-    def allowed_file(filename):
-        return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-    
     if request.method == 'POST':
         # Get form data
         product_name = request.form.get('product_name')
@@ -590,32 +587,33 @@ def addnewproduction():
         status = 'In Stock'  # Default status is In Stock
         product_registration = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        # Get the current logged-in user's ID
-        user_id = getattr(current_user, 'id', None)
-        if not user_id:
-            for attr in ['user_id', 'employee_id', 'id']:
-                if hasattr(current_user, attr):
-                    user_id = getattr(current_user, attr)
-                    break
+        # Get the current logged-in user's ID - Use employee_id instead of user_id
+        employee_id = getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None)
         
-        if not user_id:
-            flash("Unable to determine your user ID. Access denied.", "danger")
+        # If we still don't have an employee_id, check if it's an employee
+        if not employee_id:
+            # Check if the current user has an employee_id attribute (from Employees table)
+            employee_id = getattr(current_user, 'employee_id', None)
+        
+        # If we still can't find it, we might need to handle this case
+        if not employee_id:
+            flash("Unable to determine employee ID. Please contact administrator.", "danger")
             return redirect(url_for('addnewproduction'))
         
         try:
             conn = sqlite3.connect(shopfleetdb)
             cursor = conn.cursor()
             
-            # Insert new product into Products table
+            # Insert new product into Products table - Use employee_id instead of user_id
             cursor.execute("""
                 INSERT INTO Products (
                     product_name, product_category, product_description, product_image,
-                    product_quantity, product_cost, retail_price, user_id,
+                    product_quantity, product_cost, retail_price, employee_id,
                     product_registration, product_location, location_description, status
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 product_name, product_category, product_description, product_image_filename,
-                product_quantity, product_cost, retail_price, user_id,
+                product_quantity, product_cost, retail_price, employee_id,
                 product_registration, product_location, location_description, status
             ))
             
@@ -627,6 +625,7 @@ def addnewproduction():
             
         except Exception as e:
             flash(f"Error adding product: {str(e)}", "danger")
+            print(e)
             return redirect(url_for('addnewproduction'))
     
     # For GET request

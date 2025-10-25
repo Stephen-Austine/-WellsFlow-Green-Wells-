@@ -76,7 +76,7 @@ def admin_gas_refill_dashboard():
     allowed_roles = ["Admin", "CustomerService", "Financer"]
     if current_user.role not in allowed_roles:
         flash("Access denied.", "danger")
-        return redirect(url_for("home"))
+        return redirect(url_for("dashboard"))
 
     conn = get_db_connection()
     filter_status = request.args.get('status')
