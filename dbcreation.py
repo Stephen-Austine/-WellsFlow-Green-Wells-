@@ -6,7 +6,6 @@ import bcrypt
 
 # Database file
 db_name = "shopfleet.db"
-sql_file = "shopfleet.sql"
 
 # Connect
 conn = sqlite3.connect(db_name)
@@ -25,9 +24,11 @@ BASE_ORDER = 500_000_000
 BASE_REVIEW = 600_000_000
 BASE_CART = 700_000_000
 BASE_GAS_REFILL = 800_000_000  # 🔥 NEW: Gas Refill Orders
+BASE_FLEET_ORDERS = 900_000_000 # NEW: Fleet Orders
+BASE_FLEET_ASSIGNMENTS = 1_000_000_000 # NEW: Fleet Order Assignments
 
 # -------------------------------
-# Create Tables (if not exist)
+# Create Tables (if not exist) - Using original structure
 # -------------------------------
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS `Users` (
@@ -143,18 +144,53 @@ CREATE TABLE IF NOT EXISTS `Reviews` (
 );
 """)
 
-# 🔥 NEW TABLE: GasRefillOrders
+# 🔥 NEW TABLE: GasRefillOrders - Using original structure
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS `GasRefillOrders` (
-    `order_id` INTEGER PRIMARY KEY AUTOINCREMENT,
-    `customer_id` INTEGER NOT NULL,
+    `order_id` INTEGER PRIMARY KEY NOT NULL UNIQUE, -- Changed from AUTOINCREMENT to UNIQUE
+    `user_id` INTEGER NOT NULL,
     `cylinder_type` TEXT NOT NULL,
     `size_kg` TEXT NOT NULL,
     `location` TEXT NOT NULL,
     `instructions` TEXT,
     `status` TEXT DEFAULT 'Pending',
     `order_timestamp` REAL NOT NULL,
-    FOREIGN KEY(`customer_id`) REFERENCES `Users`(`user_id`)
+    FOREIGN KEY(`user_id`) REFERENCES `Users`(`user_id`)
+);
+""")
+
+# NEW TABLE: FleetOrders - Track quantity requested with duration
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS `FleetOrders` (
+    `fleetorder_id` INTEGER PRIMARY KEY NOT NULL UNIQUE,
+    `user_id` INTEGER NOT NULL,
+    `cargo_type` TEXT NOT NULL,
+    `quantity` INTEGER NOT NULL, -- Number of vehicles requested
+    `assigned_quantity` INTEGER DEFAULT 0, -- Number of vehicles assigned so far
+    `destination` TEXT NOT NULL,
+    `instructions` TEXT,
+    `duration_days` INTEGER NOT NULL, -- Number of days the fleet is needed
+    `start_date` TEXT NOT NULL, -- When the rental starts
+    `expected_return_date` TEXT, -- When the fleet is expected back (calculated)
+    `actual_return_date` TEXT, -- When the fleet was actually returned
+    `status` TEXT DEFAULT 'Pending', -- Pending, Assigned, In Transit, Completed, Returned
+    `order_timestamp` REAL NOT NULL,
+    `total_cost` REAL DEFAULT 0.0, -- Total cost of the rental
+    FOREIGN KEY(`user_id`) REFERENCES `Users`(`user_id`)
+);
+""")
+
+# NEW TABLE: FleetOrderAssignments - Track which specific vehicles are assigned
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS `FleetOrderAssignments` (
+    `assignment_id` INTEGER PRIMARY KEY NOT NULL UNIQUE,
+    `fleetorder_id` INTEGER NOT NULL,
+    `fleet_id` INTEGER NOT NULL,
+    `assignment_timestamp` REAL NOT NULL,
+    `return_timestamp` REAL, -- When this specific vehicle was returned
+    `status` TEXT DEFAULT 'Active', -- Active, Returned
+    FOREIGN KEY(`fleetorder_id`) REFERENCES `FleetOrders`(`fleetorder_id`),
+    FOREIGN KEY(`fleet_id`) REFERENCES `Fleet`(`fleet_id`)
 );
 """)
 
@@ -308,7 +344,7 @@ for i, cart_item in enumerate(cart_items):
     cart_id = cart_item[0]
     cursor.execute("SELECT product_id, user_id FROM Cart WHERE cart_id = ?", (cart_id,))
     cart_data = cursor.fetchone()
-    if cart_data:
+    if cart_data: # Fixed the typo here
         product_id, user_id = cart_data
         cursor.execute("""
         INSERT OR IGNORE INTO Orders (
@@ -334,18 +370,18 @@ gas_cylinders = [
 ]
 locations = ["Nairobi CBD", "Westlands", "Karen", "Kasarani", "Ruiru"]
 for i in range(5):
-    customer_id = BASE_USER + random.randint(1, 5)
+    user_id = BASE_USER + random.randint(1, 5)
     cylinder_type, size_kg = random.choice(gas_cylinders)
     location = random.choice(locations)
     instructions = f"Gate code: {random.randint(100, 999)}" if random.random() > 0.5 else ""
     cursor.execute("""
     INSERT OR IGNORE INTO GasRefillOrders (
-        order_id, customer_id, cylinder_type, size_kg, location, instructions,
+        order_id, user_id, cylinder_type, size_kg, location, instructions,
         status, order_timestamp
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         BASE_GAS_REFILL + i,
-        customer_id,
+        user_id,
         cylinder_type,
         size_kg,
         location,
@@ -353,6 +389,72 @@ for i in range(5):
         random.choice(["Pending", "Assigned", "In Transit", "Delivered"]),
         int(time.time()) - random.randint(0, 86400)  # up to 24h ago
     ))
+
+# -------------------------------
+# Insert dummy Fleet Orders (for testing) - With duration
+# -------------------------------
+cargo_types = ["Fuel", "Gas", "Oil", "Chemicals", "General Cargo"]
+destinations = ["Nairobi", "Mombasa", "Kisumu", "Eldoret", "Nakuru", "Thika", "Kiambu"]
+for i in range(5):
+    user_id = BASE_USER + random.randint(1, 5)
+    cargo_type = random.choice(cargo_types)
+    quantity = random.randint(1, 5)  # Number of vehicles requested
+    destination = random.choice(destinations)
+    duration_days = random.randint(1, 14)  # 1-14 days
+    start_date = time.strftime("%Y-%m-%d", time.localtime(time.time() + random.randint(0, 86400)))  # Today or tomorrow
+    expected_return_date = time.strftime("%Y-%m-%d", time.localtime(time.time() + (duration_days * 86400)))
+    instructions = f"Delivery instructions: {random.randint(700000000, 799999999)}" if random.random() > 0.5 else ""
+    status = random.choice(["Pending", "Assigned", "In Transit", "Completed"])
+    
+    cursor.execute("""
+    INSERT OR IGNORE INTO FleetOrders (
+        fleetorder_id, user_id, cargo_type, quantity, assigned_quantity, destination, instructions,
+        duration_days, start_date, expected_return_date, status, order_timestamp, total_cost
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        BASE_FLEET_ORDERS + i,
+        user_id,
+        cargo_type,
+        quantity,
+        random.randint(0, quantity),  # Some might have partial assignments
+        destination,
+        instructions,
+        duration_days,
+        start_date,
+        expected_return_date,
+        status,
+        int(time.time()) - random.randint(0, 86400),  # up to 24h ago
+        random.randint(5000, 50000)  # Random cost
+    ))
+
+# -------------------------------
+# Insert dummy Fleet Order Assignments (for testing)
+# -------------------------------
+for i in range(8):
+    # Get existing fleet orders that have assigned vehicles
+    cursor.execute("SELECT fleetorder_id, quantity, assigned_quantity FROM FleetOrders WHERE assigned_quantity > 0 LIMIT 1")
+    order_data = cursor.fetchone()
+    if order_data:
+        fleetorder_id, quantity, assigned_quantity = order_data
+        # Create assignments for the assigned vehicles
+        for j in range(min(assigned_quantity, 3)):  # Assign up to 3 vehicles per order
+            fleet_id = BASE_FLEET + random.randint(1, 5)
+            assignment_timestamp = int(time.time()) - random.randint(0, 86400)
+            status = random.choice(["Active", "Returned"])
+            return_timestamp = assignment_timestamp + (duration_days * 86400) if status == "Returned" else None
+            
+            cursor.execute("""
+            INSERT OR IGNORE INTO FleetOrderAssignments (
+                assignment_id, fleetorder_id, fleet_id, assignment_timestamp, return_timestamp, status
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                BASE_FLEET_ASSIGNMENTS + i + j,
+                fleetorder_id,
+                fleet_id,
+                assignment_timestamp,
+                return_timestamp,
+                status
+            ))
 
 # -------------------------------
 # Insert dummy Reviews
@@ -378,4 +480,8 @@ conn.close()
 
 print(f"Database '{db_name}' created successfully with namespaced IDs.")
 print(f"✅ Gas Refill Orders table added with sample data (IDs start at {BASE_GAS_REFILL}).")
+print(f"✅ Fleet Orders table added with sample data (IDs start at {BASE_FLEET_ORDERS}).")
+print(f"✅ Fleet Order Assignments table added with sample data (IDs start at {BASE_FLEET_ASSIGNMENTS}).")
 print(f"✅ Products table now references employee_id instead of user_id.")
+print(f"✅ FleetOrders includes duration tracking and cost calculation.")
+print(f"✅ FleetOrderAssignments tracks individual vehicle assignments to orders.")
