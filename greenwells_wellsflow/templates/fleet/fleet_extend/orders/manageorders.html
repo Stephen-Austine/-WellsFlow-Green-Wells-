@@ -23,13 +23,13 @@
     <li class="nav-item">
       <a class="nav-link {% if not current_filter %}active{% endif %}" href="{{ url_for('ordersmanage') }}">
         All Orders 
-        <span class="badge bg-primary">{{ total_orders }}</span>
+        <span class="badge bg-success">{{ total_orders }}</span>
       </a>
     </li>
     {% for status_row in status_counts %}
       <li class="nav-item">
         <a class="nav-link {% if current_filter == status_row['status'] %}active{% endif %}" 
-           href="{{ url_for('ordersmanage', status=status_row['status']) }}">
+           href="{{ url_for('ordersmanage', status=status_row['status']) }}" style="color: green;">
           {{ status_row['status'] }} <span class="badge bg-secondary">{{ status_row['count'] }}</span>
         </a>
       </li>
@@ -75,13 +75,13 @@
                     </div>
                     <div class="col-md-2">
                       <p class="mb-1"><strong>Status:</strong></p>
-                      <span class="badge bg-{% if order['status'] == 'Completed' %}success{% elif order['status'] == 'Cancelled' %}danger{% elif order['status'] == 'In Transit' %}info{% elif order['status'] == 'Confirmed' %}primary{% elif order['status'] == 'Processing' %}warning{% else %}secondary{% endif %}">
+                      <span class="badge bg-{% if order['status'] == 'Completed' %}success{% elif order['status'] == 'Cancelled' %}danger{% elif order['status'] == 'In Transit' %}info{% elif order['status'] == 'Confirmed' %}success{% elif order['status'] == 'Processing' %}warning{% else %}secondary{% endif %}">
                         {{ order['status'] }}
                       </span>
                     </div>
                     <div class="col-md-2 text-end">
                       <!-- More Info Button -->
-                      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#orderModal{{ order['order_id'] }}">
+                      <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#orderModal{{ order['order_id'] }}">
                         More Info
                       </button>
                     </div>
@@ -110,7 +110,7 @@
                         <p><strong>OTP:</strong> {{ order['otp'] }}</p>
                         <p><strong>Order Timestamp:</strong> {{ order['order_timestamp'] }}</p>
                         <p><strong>Status:</strong> 
-                          <span class="badge bg-{% if order['status'] == 'Completed' %}success{% elif order['status'] == 'Cancelled' %}danger{% elif order['status'] == 'In Transit' %}info{% elif order['status'] == 'Confirmed' %}primary{% elif order['status'] == 'Processing' %}warning{% else %}secondary{% endif %}">
+                          <span class="badge bg-{% if order['status'] == 'Completed' %}success{% elif order['status'] == 'Cancelled' %}danger{% elif order['status'] == 'In Transit' %}info{% elif order['status'] == 'Confirmed' %}success{% elif order['status'] == 'Processing' %}warning{% else %}secondary{% endif %}">
                             {{ order['status'] }}
                           </span>
                         </p>
@@ -133,7 +133,7 @@
                               {% endfor %}
                             </select>
                           </div>
-                          <button type="submit" class="btn btn-primary">Assign Fleet</button>
+                          <button type="submit" class="btn btn-success">Assign Fleet</button>
                         </form>
                       </div>
                       <div class="col-md-6">                        

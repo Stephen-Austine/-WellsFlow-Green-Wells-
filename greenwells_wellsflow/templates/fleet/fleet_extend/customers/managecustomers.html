@@ -22,13 +22,13 @@
     <li class="nav-item">
       <a class="nav-link {% if not current_filter %}active{% endif %}" href="{{ url_for('customersmanage') }}">
         All Customers 
-        <span class="badge bg-primary">{{ total_customers }}</span>
+        <span class="badge bg-success">{{ total_customers }}</span>
       </a>
     </li>
     {% for status_row in status_counts %}
       <li class="nav-item">
         <a class="nav-link {% if current_filter == status_row['status'] %}active{% endif %}" 
-           href="{{ url_for('customersmanage', status=status_row['status']) }}">
+           href="{{ url_for('customersmanage', status=status_row['status']) }}" style="color: green;">
           {{ status_row['status'] }} <span class="badge bg-secondary">{{ status_row['count'] }}</span>
         </a>
       </li>
@@ -81,7 +81,7 @@
                     </div>
                     <div class="col-md-2 text-end">
                       <!-- More Info Button -->
-                      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#customerModal{{ customer['user_id'] }}">
+                      <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#customerModal{{ customer['user_id'] }}">
                         More Info
                       </button>
                     </div>

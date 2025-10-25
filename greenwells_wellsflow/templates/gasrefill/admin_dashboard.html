@@ -21,7 +21,7 @@
     <li class="nav-item">
       <a class="nav-link {% if not current_filter %}active{% endif %}" href="{{ url_for('gasrefill.admin_gas_refill_dashboard') }}">
         All Orders 
-        <span class="badge bg-primary">{{ total_orders }}</span>
+        <span class="badge bg-success">{{ total_orders }}</span>
       </a>
     </li>
     
@@ -29,7 +29,7 @@
     {% for s in status_counts %}
       <li class="nav-item">
         <a class="nav-link {% if current_filter == s['status'] %}active{% endif %}" 
-           href="{{ url_for('gasrefill.admin_gas_refill_dashboard', status=s['status']) }}">
+           href="{{ url_for('gasrefill.admin_gas_refill_dashboard', status=s['status']) }}" style="color: green;">
           {{ s['status'] }} <span class="badge bg-secondary">{{ s['count'] }}</span>
         </a>
       </li>
@@ -96,7 +96,7 @@
                     </div>
                     <div class="col-md-3 text-end">
                       <!-- More Info Button -->
-                      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#orderModal{{ order['order_id'] }}">
+                      <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#orderModal{{ order['order_id'] }}">
                         More Info
                       </button>
                     </div>
@@ -175,7 +175,7 @@
       {% else %}
         <div class="text-center py-5">
           <h5>No gas refill orders found{% if current_filter %} with status "{{ current_filter }}"{% endif %}.</h5>
-          <a href="{{ url_for('addneworder') }}" class="btn btn-primary mt-3">
+          <a href="{{ url_for('addneworder') }}" class="btn btn-success mt-3">
             <i class="fas fa-plus"></i> Add New Order
           </a>
         </div>
