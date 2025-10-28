@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS `Users` (
     `password` TEXT NOT NULL,
     `otp` TEXT,
     `otp_timestamp` REAL,
-    `location` TEXT NOT NULL,
+    `location` TEXT NOT NULL, -- This is the user's general location, not ping location
     `status` TEXT NOT NULL DEFAULT 'Inactive',
     `last_login` REAL NOT NULL
 );
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS `Employees` (
     `password` TEXT NOT NULL,
     `otp` TEXT NOT NULL,
     `otp_timestamp` REAL NOT NULL,
-    `location` TEXT NOT NULL,
+    `location` TEXT NOT NULL, -- This is the employee's general location, not ping location
     `role` TEXT NOT NULL DEFAULT 'Customer',
     `status` TEXT NOT NULL DEFAULT 'Inactive',
     `last_login` REAL NOT NULL
@@ -193,6 +193,26 @@ CREATE TABLE IF NOT EXISTS `FleetOrderAssignments` (
     FOREIGN KEY(`fleet_id`) REFERENCES `Fleet`(`fleet_id`)
 );
 """)
+
+# -------------------------------
+# ADD NEW COLUMNS FOR PING LOCATION TRACKING
+# These ALTER TABLE statements must run AFTER the tables are created
+# but BEFORE any data is inserted into them.
+# -------------------------------
+
+# Add location tracking columns to Fleet table
+cursor.execute("ALTER TABLE Fleet ADD COLUMN last_known_ip TEXT DEFAULT NULL;")
+cursor.execute("ALTER TABLE Fleet ADD COLUMN last_known_location TEXT DEFAULT NULL;")
+cursor.execute("ALTER TABLE Fleet ADD COLUMN last_known_lat REAL DEFAULT NULL;")
+cursor.execute("ALTER TABLE Fleet ADD COLUMN last_known_lng REAL DEFAULT NULL;")
+cursor.execute("ALTER TABLE Fleet ADD COLUMN last_location_update REAL DEFAULT NULL;")
+
+# Add location tracking columns to Employees table
+cursor.execute("ALTER TABLE Employees ADD COLUMN last_known_ip TEXT DEFAULT NULL;")
+cursor.execute("ALTER TABLE Employees ADD COLUMN last_known_location TEXT DEFAULT NULL;")
+cursor.execute("ALTER TABLE Employees ADD COLUMN last_known_lat REAL DEFAULT NULL;")
+cursor.execute("ALTER TABLE Employees ADD COLUMN last_known_lng REAL DEFAULT NULL;")
+cursor.execute("ALTER TABLE Employees ADD COLUMN last_location_update REAL DEFAULT NULL;")
 
 # -------------------------------
 # Insert default admin employee
@@ -485,3 +505,4 @@ print(f"✅ Fleet Order Assignments table added with sample data (IDs start at {
 print(f"✅ Products table now references employee_id instead of user_id.")
 print(f"✅ FleetOrders includes duration tracking and cost calculation.")
 print(f"✅ FleetOrderAssignments tracks individual vehicle assignments to orders.")
+print(f"✅ Fleet and Employees tables now include location tracking columns (IP, Location, Coordinates, Timestamp).")

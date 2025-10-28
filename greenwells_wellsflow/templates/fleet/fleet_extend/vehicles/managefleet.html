@@ -119,7 +119,7 @@
                         <p><strong>Fleet ID:</strong> {{ fleet['fleet_id'] }}</p>
                         <p><strong>Registration Number:</strong> {{ fleet['registration_number'] }}</p>
                         <p><strong>Brand:</strong> {{ fleet['fleet_brand'] }}</p>
-                        <p><strong>Model:</strong> {{ fleet['registration_number'] }}</p>
+                        <p><strong>Model:</strong> {{ fleet['registration_number'] }}</p> <!-- Note: This seems to repeat reg number, maybe should be fleet_model? -->
                         <p><strong>Category:</strong> {{ fleet['fleet_category'] }}</p>
                         <p><strong>Registration Date:</strong> {{ fleet['registration_date'] }}</p>
                         <p><strong>Mileage:</strong> {{ fleet['fleet_mileage'] }}</p>
@@ -142,6 +142,39 @@
                             {{ fleet['status'] }}
                           </span>
                         </p>
+                        <!-- NEW: Location Information Section with specific IDs -->
+                        <hr>
+                        <h6>Location Information</h6>
+                        <p id="locationText{{ fleet['fleet_id'] }}"><strong>Last Known Location:</strong> 
+                          {% if fleet['last_known_location'] %}
+                            {{ fleet['last_known_location'] }}
+                          {% else %}
+                            <span class="text-muted">Not available</span>
+                          {% endif %}
+                        </p>
+                        <p id="coordinatesText{{ fleet['fleet_id'] }}"><strong>Coordinates:</strong> 
+                          {% if fleet['last_known_lat'] and fleet['last_known_lng'] %}
+                            Lat: {{ "%.6f"|format(fleet['last_known_lat']) }}, Lng: {{ "%.6f"|format(fleet['last_known_lng']) }}
+                          {% else %}
+                            <span class="text-muted">Not available</span>
+                          {% endif %}
+                        </p>
+                        <p id="lastUpdatedText{{ fleet['fleet_id'] }}"><strong>Last Updated:</strong> 
+                          {% if fleet['last_location_update'] %}
+                            <!-- Jinja2 filter will be applied if defined in app -->
+                            {{ fleet['last_location_update'] }}
+                          {% else %}
+                            <span class="text-muted">Never</span>
+                          {% endif %}
+                        </p>
+                        <p id="ipText{{ fleet['fleet_id'] }}"><strong>Last Known IP:</strong> 
+                          {% if fleet['last_known_ip'] %}
+                            {{ fleet['last_known_ip'] }}
+                          {% else %}
+                            <span class="text-muted">Not available</span>
+                          {% endif %}
+                        </p>
+                        <!-- END NEW: Location Information Section -->
                       </div>
                     </div>
                     
@@ -198,14 +231,22 @@
                      </section>
 
                   </div>
-                  <div class="modal-footer">
-                    <a href="{{ url_for('editfleet', fleet_id=fleet['fleet_id']) }}" 
-                      class="btn btn-warning" 
-                      {% if fleet['employee_id'] and fleet['employee_id'] != '0' %}disabled title="Cannot edit a fleet with a driver assigned"{% endif %}>
-                      Edit
-                    </a>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                  <!-- Updated Modal Footer -->
+                  <div class="modal-footer d-flex justify-content-between align-items-center">
+                    <div>
+                      Ping location : <span id="lastKnownLocation{{ fleet['fleet_id'] }}">Last known</span>
+                    </div>
+                    <div>
+                      <button class="btn btn-info me-2">Ping Location</button>
+                      <a href="{{ url_for('editfleet', fleet_id=fleet['fleet_id']) }}" 
+                        class="btn btn-warning me-2" 
+                        {% if fleet['employee_id'] and fleet['employee_id'] != '0' %}disabled title="Cannot edit a fleet with a driver assigned"{% endif %}>
+                        Edit
+                      </a>
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
                   </div>
+                  <!-- End Updated Modal Footer -->
                 </div>
               </div>
             </div>
@@ -466,6 +507,107 @@
     }
     return true;
   }
+
+  // Function to ping location via AJAX
+  function pingLocation(fleetId) {
+    // Show a loading message or disable the button temporarily
+    const pingButton = document.querySelector(`#fleetModal${fleetId} .btn-info`);
+    const originalText = pingButton.textContent;
+    if (!pingButton) {
+         console.error(`Ping button not found for fleet ID: ${fleetId}`);
+         return;
+    }
+    pingButton.textContent = 'Pinging...';
+    pingButton.disabled = true;
+
+    fetch('/vehiclesmanagefleet', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        // Include your CSRF token here if needed
+        // 'X-CSRF-Token': getCSRFToken()
+      },
+      body: `fleet_id=${encodeURIComponent(fleetId)}&action=ping_location`
+    })
+    .then(response => response.json())
+    .then(data => {
+      // Check if the server indicated a logout due to VPN (e.g., location is China)
+      if (data.logout) {
+        alert(data.message || 'Logged out due to location restriction (VPN detected).');
+        // Optionally, redirect the user to the login page
+        window.location.href = '/login'; // Replace '/login' with your actual login URL
+        return; // Stop further execution for this request
+      }
+
+      if (data.success) {
+        // Update the modal footer content
+        const locationSpan = document.querySelector(`#lastKnownLocation${fleetId}`);
+        if (locationSpan) {
+          locationSpan.textContent = `Lat: ${data.lat.toFixed(6)}, Lng: ${data.lng.toFixed(6)}`;
+        } else {
+            console.warn(`Footer location span not found for fleet ID: ${fleetId}`);
+        }
+
+        // Update the modal body content using the specific IDs
+        const locationTextElement = document.getElementById(`locationText${fleetId}`);
+        const coordinatesTextElement = document.getElementById(`coordinatesText${fleetId}`);
+        const lastUpdatedTextElement = document.getElementById(`lastUpdatedText${fleetId}`);
+
+        if (locationTextElement) {
+            locationTextElement.innerHTML = `<strong>Last Known Location:</strong> ${data.location || '<span class="text-muted">Not available</span>'}`;
+        } else {
+            console.warn(`Location text element not found for fleet ID: ${fleetId}`);
+        }
+        if (coordinatesTextElement) {
+            coordinatesTextElement.innerHTML = `<strong>Coordinates:</strong> Lat: ${data.lat.toFixed(6)}, Lng: ${data.lng.toFixed(6)}`;
+        } else {
+            console.warn(`Coordinates text element not found for fleet ID: ${fleetId}`);
+        }
+        if (lastUpdatedTextElement) {
+            const now = new Date();
+            const timestampString = now.toLocaleString();
+            lastUpdatedTextElement.innerHTML = `<strong>Last Updated:</strong> ${timestampString}`;
+        } else {
+            console.warn(`Last updated text element not found for fleet ID: ${fleetId}`);
+        }
+
+        alert(`Location updated successfully!\nLat: ${data.lat.toFixed(6)}, Lng: ${data.lng.toFixed(6)}`);
+      } else {
+        // Handle other errors (not logout)
+        alert(`Error: ${data.message || 'An unknown error occurred.'}`);
+      }
+    })
+    .catch(error => {
+      console.error('Error pinging location:', error);
+      alert('An error occurred while pinging the location.');
+    })
+    .finally(() => {
+      // Re-enable the button and restore text
+      if (pingButton) { // Check if button still exists
+          pingButton.textContent = originalText;
+          pingButton.disabled = false;
+      }
+    });
+  }
+
+  // Attach click event to all ping buttons in modals
+  document.addEventListener('click', function(e) {
+    if (e.target && e.target.classList.contains('btn-info') && e.target.textContent.includes('Ping Location')) {
+      // Find the closest modal to get the fleet ID
+      const modal = e.target.closest('.modal');
+      if (modal) {
+        const modalId = modal.id;
+        // Extract fleet_id from modal ID (e.g., fleetModal1234500000001 -> 1234500000001)
+        const fleetId = modalId.replace('fleetModal', '');
+        if (fleetId) {
+          pingLocation(fleetId);
+        } else {
+          console.error('Could not determine fleet ID from modal ID:', modalId);
+        }
+      }
+    }
+  });
+
 </script>
 
 {% endblock %}

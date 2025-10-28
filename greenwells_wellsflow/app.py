@@ -105,6 +105,25 @@ def debug_routes():
         return f"<pre>{routes}</pre>"
     except Exception as e:
         return f"Error: {str(e)}"
+    
+
+
+@app.template_filter('timestamp_to_datetime')
+def timestamp_to_datetime_filter(timestamp):
+    """
+    Converts a Unix timestamp to a readable datetime string.
+    """
+    if timestamp:
+        try:
+            # Convert the timestamp to a datetime object
+            dt = datetime.fromtimestamp(timestamp)
+            # Format it as a string (you can adjust the format as needed)
+            return dt.strftime('%Y-%m-%d %H:%M:%S') # Example format: 2023-10-27 14:30:00
+        except (ValueError, TypeError, OSError) as e:
+            # Handle potential errors during conversion
+            print(f"Error converting timestamp {timestamp}: {e}")
+            return "Invalid Timestamp"
+    return "Never"
 
 
 @app.route("/")
@@ -222,6 +241,11 @@ def editfleet(fleet_id):
 
     return render_template("fleet/fleet_extend/vehicles/editfleet.html", fleet=fleet)
 
+import time
+import requests
+from flask import jsonify, flash, redirect, url_for, session # Add session import if using session-based logout
+from flask_login import logout_user # Import logout_user from flask_login
+
 @app.route("/vehiclesmanagefleet", methods=['GET', 'POST'])
 @role_required(['FleetManager', 'Admin', 'Driver'])
 def vehiclesmanagefleet():
@@ -233,7 +257,7 @@ def vehiclesmanagefleet():
 
     if request.method == 'POST':
         fleet_id = request.form.get('fleet_id')
-        action = request.form.get('action')  # 'status' or 'driver'
+        action = request.form.get('action')  # 'status', 'driver', or 'ping_location'
         
         if action == 'status':
             new_status = request.form.get('status')
@@ -277,6 +301,88 @@ def vehiclesmanagefleet():
                     cursor.execute("UPDATE Fleet SET status = 'Assigned' WHERE fleet_id = ?", (fleet_id,))
                     conn.commit()
                     flash("Driver assigned successfully and status set to Assigned!", "success")
+        
+        elif action == 'ping_location':
+            # --- Location Ping Logic with Kenya Restriction ---
+            # ///////DEV SET
+            try: 
+                pass
+            # try:
+            #     # Get location from ipinfo.io
+            #     response = requests.get('https://ipinfo.io/json', timeout=10)
+                
+            #     if response.status_code == 200:
+            #         data = response.json()
+                    
+            #         # Extract location information
+            #         ip = data.get('ip', 'Unknown')
+            #         location_str = data.get('loc', 'Unknown')
+            #         city = data.get('city', 'Unknown')
+            #         region = data.get('region', 'Unknown')
+            #         country = data.get('country', 'Unknown')
+            #         org = data.get('org', 'Unknown')
+                    
+            #         # Check if the country is Kenya
+            #         if country == 'JP': # 'CN' is the country code for Kenya  ////DEV SET
+            #             # Log the user out
+            #             logout_user() # This logs out the user using Flask-Login
+            #             # Clear session if also using sessions (optional, Flask-Login usually handles this)
+            #             # session.clear() 
+                        
+            #             # Return a JSON response indicating logout due to VPN
+            #             # The frontend JS should handle this specific response
+            #             return jsonify({'success': False, 'logout': True, 'message': 'Use of VPN detected. You have been logged out.'})
+
+            #         # If not Kenya, proceed with updating the database
+            #         readable_location = f"{city}, {region}, {country}" if city != 'Unknown' else 'Unknown'
+
+            #         if location_str != 'Unknown' and ',' in location_str:
+            #             lat_str, lng_str = location_str.split(',')
+            #             try:
+            #                 lat = float(lat_str.strip())
+            #                 lng = float(lng_str.strip())
+            #             except ValueError:
+            #                 print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Error: Invalid coordinate format: {location_str}")
+            #                 return jsonify({'success': False, 'message': 'Invalid location data received'}), 500
+            #         else:
+            #             print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Error: Could not parse coordinates from: {location_str}")
+            #             return jsonify({'success': False, 'message': 'Could not determine coordinates'}), 500
+                    
+            #         # Update the specific fleet's location in the database
+            #         cursor.execute("""
+            #             UPDATE Fleet 
+            #             SET last_known_ip = ?, 
+            #                 last_known_location = ?, 
+            #                 last_known_lat = ?, 
+            #                 last_known_lng = ?, 
+            #                 last_location_update = ?
+            #             WHERE fleet_id = ?
+            #         """, (ip, readable_location, lat, lng, time.time(), fleet_id))
+                    
+            #         conn.commit()
+                    
+            #         # Optional: Log the update
+            #         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Location Update for Fleet {fleet_id}:")
+            #         print(f"  IP Address: {ip}")
+            #         print(f"  ISP/Org: {org}")
+            #         print(f"  Location: {readable_location}")
+            #         print(f"  Coordinates: {lat}, {lng}")
+            #         print("-" * 50)
+                    
+            #         return jsonify({'success': True, 'message': 'Location updated successfully', 'lat': lat, 'lng': lng, 'location': readable_location})
+                    
+            #     else:
+            #         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Error: Could not fetch location")
+            #         print(f"  Status Code: {response.status_code}")
+            #         return jsonify({'success': False, 'message': f'Failed to fetch location (Status: {response.status_code})'}), 500
+                    
+            except requests.exceptions.RequestException as e:
+                print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Network Error: {e}")
+                return jsonify({'success': False, 'message': f'Network error: {str(e)}'}), 500
+            except Exception as e:
+                print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Error: {e}")
+                return jsonify({'success': False, 'message': f'An error occurred: {str(e)}'}), 500
+            # --- End Location Ping Logic with Kenya Restriction ---
 
         redirect_url = url_for('vehiclesmanagefleet')
         if filter_status:
