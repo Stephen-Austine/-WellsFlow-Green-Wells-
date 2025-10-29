@@ -21,7 +21,7 @@
   <!-- Status Navbar -->
   <ul class="nav nav-tabs mb-3">
     <li class="nav-item">
-      <a class="nav-link {% if not current_filter %}active{% endif %}" href="{{ url_for('ordersmanage') }}">
+      <a class="nav-link {% if not current_filter %}active{% endif %}" href="{{ url_for('ordersmanage') }}" style="color: green;">
         All Orders 
         <span class="badge bg-success">{{ total_orders }}</span>
       </a>
