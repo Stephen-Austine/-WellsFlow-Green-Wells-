@@ -46,7 +46,7 @@ def gas_refill_form():
             user_id = getattr(current_user, 'user_id', getattr(current_user, 'id', None))
             cursor.execute("""
                 INSERT INTO GasRefillOrders (
-                    customer_id, cylinder_type, size_kg, location, instructions,
+                    user_id, cylinder_type, size_kg, location, instructions,
                     status, order_timestamp
                 ) VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (
@@ -79,31 +79,96 @@ def admin_gas_refill_dashboard():
         return redirect(url_for("dashboard"))
 
     conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
     filter_status = request.args.get('status')
 
     if request.method == "POST":
         order_id = request.form.get("order_id")
-        new_status = request.form.get("status")
-        cursor = conn.cursor()
-        cursor.execute("UPDATE GasRefillOrders SET status = ? WHERE order_id = ?", (new_status, order_id))
-        conn.commit()
-        flash("✅ Order status updated!", "success")
-        return redirect(url_for("gasrefill.admin_gas_refill_dashboard", status=filter_status))
+        action = request.form.get("action")  # 'status' or 'fleet'
+        
+        if action == 'status':
+            new_status = request.form.get("status")
+            cursor.execute("UPDATE GasRefillOrders SET status = ? WHERE order_id = ?", (new_status, order_id))
+            conn.commit()
+            flash("✅ Order status updated!", "success")
+        elif action == 'fleet':
+            fleet_id = request.form.get('fleet_id')
+            if fleet_id:
+                # Update fleet assignment and set status to 'Assigned' or 'In Transit'
+                cursor.execute("UPDATE GasRefillOrders SET fleet_id = ?, status = 'Assigned' WHERE order_id = ?", (fleet_id, order_id))
+                conn.commit()
+                flash("Fleet assigned successfully and status set to Assigned!", "success")
+            else:
+                flash("Please select a fleet vehicle!", "error")
 
+        redirect_url = url_for('gasrefill.admin_gas_refill_dashboard')
+        if filter_status:
+            redirect_url += f'?status={filter_status}'
+        return redirect(redirect_url)
+
+    # Get fleets with assigned drivers (for potential fleet assignment - similar to orders page)
+    cursor.execute("""
+        SELECT f.fleet_id, f.registration_number, f.fleet_brand, f.fleet_model, 
+               e.first_name, e.last_name
+        FROM Fleet f
+        LEFT JOIN Employees e ON f.employee_id = e.employee_id
+        WHERE f.status = 'Assigned' AND f.employee_id != '0' AND f.employee_id IS NOT NULL
+        ORDER BY f.registration_number
+    """)
+    fleets = cursor.fetchall()
+
+    # Fetch gas orders with related user information
     if filter_status:
-        cursor = conn.execute("SELECT * FROM GasRefillOrders WHERE status = ?", (filter_status,))
+        cursor.execute("""
+            SELECT g.*, 
+                   u.first_name as first_name, 
+                   u.last_name as last_name,
+                   u.email as email,
+                   u.phone_number as phone_number,
+                   u.location as location,
+                   f.registration_number as fleet_registration
+            FROM GasRefillOrders g
+            LEFT JOIN Users u ON g.user_id = u.user_id
+            LEFT JOIN Fleet f ON g.fleet_id = f.fleet_id
+            WHERE g.status = ?
+            ORDER BY g.order_timestamp DESC
+        """, (filter_status,))
     else:
-        cursor = conn.execute("SELECT * FROM GasRefillOrders ORDER BY order_timestamp DESC")
+        cursor.execute("""
+            SELECT g.*, 
+                   u.first_name as first_name, 
+                   u.last_name as last_name,
+                   u.email as email,
+                   u.phone_number as phone_number,
+                   u.location as location,
+                   f.registration_number as fleet_registration
+            FROM GasRefillOrders g
+            LEFT JOIN Users u ON g.user_id = u.user_id
+            LEFT JOIN Fleet f ON g.fleet_id = f.fleet_id
+            ORDER BY g.order_timestamp DESC
+        """)
+    
     orders = cursor.fetchall()
 
-    cursor.execute("SELECT status, COUNT(*) as count FROM GasRefillOrders GROUP BY status")
+    # Get status counts
+    cursor.execute("""
+        SELECT status, COUNT(*) as count 
+        FROM GasRefillOrders 
+        GROUP BY status
+    """)
     status_counts = cursor.fetchall()
+
+    # Get total orders count
     cursor.execute("SELECT COUNT(*) as total FROM GasRefillOrders")
     total_orders = cursor.fetchone()['total']
+
     conn.close()
 
     return render_template("gasrefill/admin_dashboard.html",
                            orders=orders,
+                           fleets=fleets,
                            status_counts=status_counts,
                            current_filter=filter_status,
                            total_orders=total_orders)
@@ -117,13 +182,13 @@ def order_tracking(order_id):
     cursor.execute("""
         SELECT g.*, u.first_name, u.last_name 
         FROM GasRefillOrders g
-        JOIN Users u ON g.customer_id = u.user_id
+        JOIN Users u ON g.user_id = u.user_id
         WHERE g.order_id = ?
     """, (order_id,))
     order = cursor.fetchone()
     conn.close()
 
-    if not order or (order['customer_id'] != getattr(current_user, 'user_id', None)):
+    if not order or (order['user_id'] != getattr(current_user, 'user_id', None)):
         flash("Order not found or access denied.", "danger")
         return redirect(url_for("gasrefill.gas_refill_form"))
 

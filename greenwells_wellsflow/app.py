@@ -177,9 +177,123 @@ def debug_all_users():
     return result
 
 
+@app.template_filter('datetime')
+def format_datetime(value):
+    """Format a timestamp to readable datetime"""
+    if value is None:
+        return ""
+    from datetime import datetime
+    return datetime.fromtimestamp(value).strftime('%Y-%m-%d %H:%M')
+
 @app.route("/dashboard")
+@role_required(['Driver', 'Admin', 'FleetManager'])
 def dashboard():
-    return render_template("fleet/adminside_fleet/dashboard.html")
+    conn = sqlite3.connect(shopfleetdb)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    # Get current user (driver) information
+    current_user_id = current_user.user_id
+    
+    # Query 1: Get fleet vehicles assigned to this driver
+    cursor.execute("""
+        SELECT f.*
+        FROM Fleet f 
+        WHERE f.employee_id = ?
+    """, (current_user_id,))
+    assigned_fleets = cursor.fetchall()
+    
+    # Query 2: Get product delivery orders assigned to this driver's fleet vehicles
+    cursor.execute("""
+        SELECT o.*, p.product_name, p.product_category, p.retail_price,
+               u.first_name as customer_first, u.last_name as customer_last,
+               u.location as customer_location,
+               c.status as cart_status
+        FROM Orders o
+        JOIN Fleet f ON o.fleet_id = f.fleet_id  -- Link order to fleet
+        JOIN Cart c ON o.cart_id = c.cart_id
+        JOIN Products p ON c.product_id = p.product_id
+        JOIN Users u ON c.user_id = u.user_id
+        WHERE f.employee_id = ? AND o.status != 'Completed'  -- Driver's fleet vehicles
+        ORDER BY o.order_timestamp DESC
+    """, (current_user_id,))
+    product_orders = cursor.fetchall()
+    
+    # Query 3: Get gas refill orders assigned to this driver's fleet vehicles
+    cursor.execute("""
+        SELECT g.*, u.first_name as customer_first, u.last_name as customer_last
+        FROM GasRefillOrders g
+        JOIN Fleet f ON g.fleet_id = f.fleet_id  -- Link gas order to fleet
+        JOIN Users u ON g.user_id = u.user_id
+        WHERE f.employee_id = ? AND g.status IN ('Assigned', 'In Transit')
+        ORDER BY g.order_timestamp DESC
+    """, (current_user_id,))
+    gas_orders = cursor.fetchall()
+    
+    # Query 4: Get fleet rental orders with assignments for this driver
+    cursor.execute("""
+        SELECT fo.*, fa.assignment_id, fa.status as assignment_status,
+               f.registration_number, f.fleet_brand, f.fleet_model,
+               u.first_name as customer_first, u.last_name as customer_last,
+               u.location as customer_location
+        FROM FleetOrderAssignments fa
+        JOIN FleetOrders fo ON fa.fleetorder_id = fo.fleetorder_id
+        JOIN Fleet f ON fa.fleet_id = f.fleet_id
+        JOIN Users u ON fo.user_id = u.user_id
+        WHERE f.employee_id = ? AND fa.status = 'Active'
+        ORDER BY fo.start_date DESC
+    """, (current_user_id,))
+    fleet_rental_orders = cursor.fetchall()
+    
+    # Get driver stats - Updated to reflect the correct relationship
+    cursor.execute("""
+        SELECT COUNT(*) as total_product_orders
+        FROM Orders o
+        JOIN Fleet f ON o.fleet_id = f.fleet_id
+        WHERE f.employee_id = ?
+    """, (current_user_id,))
+    total_product_orders = cursor.fetchone()['total_product_orders']
+    
+    cursor.execute("""
+        SELECT COUNT(*) as total_fleet_assignments
+        FROM FleetOrderAssignments fa
+        JOIN Fleet f ON fa.fleet_id = f.fleet_id
+        WHERE f.employee_id = ? AND fa.status = 'Active'
+    """, (current_user_id,))
+    total_fleet_assignments = cursor.fetchone()['total_fleet_assignments']
+    
+    cursor.execute("""
+        SELECT COUNT(*) as completed_orders
+        FROM Orders o
+        JOIN Fleet f ON o.fleet_id = f.fleet_id
+        WHERE f.employee_id = ? AND o.status = 'Completed'
+    """, (current_user_id,))
+    completed_orders = cursor.fetchone()['completed_orders']
+    
+    # For gas orders stats - showing only driver's assigned gas orders
+    cursor.execute("""
+        SELECT COUNT(*) as total_gas_orders
+        FROM GasRefillOrders g
+        JOIN Fleet f ON g.fleet_id = f.fleet_id
+        WHERE f.employee_id = ? AND g.status IN ('Assigned', 'In Transit')
+    """, (current_user_id,))
+    total_gas_orders = cursor.fetchone()['total_gas_orders']
+    
+    stats = {
+        'total_product_orders': total_product_orders,
+        'total_gas_orders': total_gas_orders,
+        'total_fleet_assignments': total_fleet_assignments,
+        'completed_orders': completed_orders
+    }
+    
+    conn.close()
+    
+    return render_template("fleet/adminside_fleet/dashboard.html",
+                         assigned_fleets=assigned_fleets,
+                         product_orders=product_orders,
+                         gas_orders=gas_orders,  # Now shows only driver's assigned gas orders
+                         fleet_rental_orders=fleet_rental_orders,
+                         stats=stats)
 
 
 @app.route("/vehicles")
