@@ -338,7 +338,6 @@ def vehiclesmanagefleet():
                     data = response.json()
                     
                     # Extract location information
-                    ip = data.get('ip', 'Unknown')
                     location_str = data.get('loc', 'Unknown')
                     city = data.get('city', 'Unknown')
                     region = data.get('region', 'Unknown')
@@ -374,19 +373,17 @@ def vehiclesmanagefleet():
                     # Update the specific fleet's location in the database
                     cursor.execute("""
                         UPDATE Fleet 
-                        SET last_known_ip = ?, 
-                            last_known_location = ?, 
+                        SET last_known_location = ?, 
                             last_known_lat = ?, 
                             last_known_lng = ?, 
                             last_location_update = ?
                         WHERE fleet_id = ?
-                    """, (ip, readable_location, lat, lng, time.time(), fleet_id))
+                    """, (readable_location, lat, lng, time.time(), fleet_id))
                     
                     conn.commit()
                     
                     # Optional: Log the update
                     print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Location Update for Fleet {fleet_id}:")
-                    print(f"  IP Address: {ip}")
                     print(f"  ISP/Org: {org}")
                     print(f"  Location: {readable_location}")
                     print(f"  Coordinates: {lat}, {lng}")
@@ -1166,7 +1163,6 @@ def ping_location():
             
             # Print location info
             print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Location Update:")
-            print(f"  IP Address: {ip}")
             print(f"  ISP/Org: {org}")
             print(f"  Location: {city}, {region}, {country}")
             print(f"  Coordinates: {lat}, {lng}")
