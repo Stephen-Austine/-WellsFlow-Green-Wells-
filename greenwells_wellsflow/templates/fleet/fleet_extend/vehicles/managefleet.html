@@ -167,13 +167,6 @@
                             <span class="text-muted">Never</span>
                           {% endif %}
                         </p>
-                        <p id="ipText{{ fleet['fleet_id'] }}"><strong>Last Known IP:</strong> 
-                          {% if fleet['last_known_ip'] %}
-                            {{ fleet['last_known_ip'] }}
-                          {% else %}
-                            <span class="text-muted">Not available</span>
-                          {% endif %}
-                        </p>
                         <!-- END NEW: Location Information Section -->
                       </div>
                     </div>
@@ -232,10 +225,7 @@
 
                   </div>
                   <!-- Updated Modal Footer -->
-                  <div class="modal-footer d-flex justify-content-between align-items-center">
-                    <div>
-                      Ping location : <span id="lastKnownLocation{{ fleet['fleet_id'] }}">Last known</span>
-                    </div>
+                  <div class="modal-footer">
                     <div>
                       <button class="btn btn-info me-2">Ping Location</button>
                       <a href="{{ url_for('editfleet', fleet_id=fleet['fleet_id']) }}" 
