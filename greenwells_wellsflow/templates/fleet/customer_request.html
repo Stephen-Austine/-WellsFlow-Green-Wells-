@@ -1,13 +1,53 @@
 {% extends "base2.html" %}
 {% block content %}
-<h2>Fleet Petroleum Transport Services</h2>
-<p>GreenWells provides tankers, trailers, and trucks for bulk petroleum transport across Kenya and East Africa.</p>
+<div class="container">
+    <h2>Fleet Rental Services</h2>
+    <p>Request fleet vehicles for your transportation needs. Our system will auto-configure the rental duration and other details.</p>
 
-<form method="POST">
-  {{ form.hidden_tag() }}
-  <div class="mb-3">{{ form.vehicle_type.label }} {{ form.vehicle_type(class="form-select") }}</div>
-  <div class="mb-3">{{ form.quantity.label }} {{ form.quantity(class="form-control") }}</div>
-  <div class="mb-3">{{ form.destination.label }} {{ form.destination(class="form-control") }}</div>
-  <button type="submit" class="btn btn-success">Submit Fleet Request</button>
-</form>
+    <form method="POST">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="vehicle_type" class="form-label">Vehicle Type (Cargo Type)</label>
+                <select name="vehicle_type" id="vehicle_type" class="form-select" required>
+                    <option value="">Select Vehicle Type</option>
+                    <option value="Fuel">Fuel Tanker</option>
+                    <option value="Gas">Gas Delivery Truck</option>
+                    <option value="Oil">Oil Transporter</option>
+                    <option value="Chemicals">Chemical Tanker</option>
+                    <option value="General Cargo">General Cargo Truck</option>
+                    <option value="Trailer">Trailer</option>
+                    <option value="Tanker">Tanker</option>
+                    <option value="Truck">Standard Truck</option>
+                </select>
+            </div>
+            
+            <div class="col-md-6 mb-3">
+                <label for="quantity" class="form-label">Number of Vehicles</label>
+                <input type="number" name="quantity" id="quantity" class="form-control" min="1" max="100" required>
+                <small class="form-text text-muted">How many vehicles do you need?</small>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <label for="destination" class="form-label">Destination</label>
+            <input type="text" name="destination" id="destination" class="form-control" placeholder="Enter destination" required>
+            <small class="form-text text-muted">This will also be used as delivery instructions</small>
+        </div>
+        
+        <div class="card bg-light mb-3">
+            <div class="card-body">
+                <h6>Auto-configured Details:</h6>
+                <ul class="mb-0">
+                    <li><strong>Duration:</strong> 10 days</li>
+                    <li><strong>Start Date:</strong> Today</li>
+                    <li><strong>Expected Return:</strong> 10 days from today</li>
+                    <li><strong>Instructions:</strong> Same as destination</li>
+                </ul>
+            </div>
+        </div>
+        
+        <button type="submit" class="btn btn-success">Submit Fleet Request</button>
+        <a href="{{ url_for('fleet.fleet_orders') }}" class="btn btn-secondary">View My Orders</a>
+    </form>
+</div>
 {% endblock %}

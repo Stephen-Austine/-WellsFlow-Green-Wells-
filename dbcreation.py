@@ -26,6 +26,7 @@ BASE_CART = 700_000_000
 BASE_GAS_REFILL = 800_000_000  # 🔥 NEW: Gas Refill Orders
 BASE_FLEET_ORDERS = 900_000_000 # NEW: Fleet Orders
 BASE_FLEET_ASSIGNMENTS = 1_000_000_000 # NEW: Fleet Order Assignments
+BASE_BULK_ORDERS = 1_100_000_000  # NEW: Bulk Orders
 
 # -------------------------------
 # Create Tables (if not exist) - Using original structure
@@ -191,6 +192,24 @@ CREATE TABLE IF NOT EXISTS `FleetOrderAssignments` (
     `status` TEXT DEFAULT 'Active', -- Active, Returned
     FOREIGN KEY(`fleetorder_id`) REFERENCES `FleetOrders`(`fleetorder_id`),
     FOREIGN KEY(`fleet_id`) REFERENCES `Fleet`(`fleet_id`)
+);
+""")
+
+# NEW TABLE: BulkOrders - For bulk product orders with delivery
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS `BulkOrders` (
+    `bulkorder_id` INTEGER PRIMARY KEY NOT NULL UNIQUE,
+    `user_id` INTEGER NOT NULL,
+    `fleet_id` INTEGER,  -- Optional, assigned later
+    `product_category` TEXT NOT NULL, -- What type of product (Fuel, Gas, Oil, etc.)
+    `product_type` TEXT NOT NULL, -- Specific product (Unleaded Premium, 6kg Gas Cylinder, etc.)
+    `quantity_requested` INTEGER NOT NULL, -- Amount requested (liters, kg, etc.)
+    `delivery_address` TEXT NOT NULL, -- Delivery destination
+    `total_cost` REAL DEFAULT 0.0, -- Estimated total cost
+    `status` TEXT DEFAULT 'Pending', -- Pending, Confirmed, In Transit, Delivered, Cancelled
+    `order_timestamp` REAL NOT NULL,
+    FOREIGN KEY(`user_id`) REFERENCES `Users`(`user_id`),
+    FOREIGN KEY(`fleet_id`) REFERENCES `Fleet`(`fleet_id`)  -- Reference Fleet table
 );
 """)
 
@@ -470,6 +489,44 @@ for i in range(8):
             ))
 
 # -------------------------------
+# Insert dummy Bulk Orders (for testing)
+# -------------------------------
+bulk_categories = ["Fuel", "Gas", "Oil", "Chemicals"]
+bulk_products = {
+    "Fuel": ["Unleaded Premium", "Low Sulphur Diesel", "Kerosine"],
+    "Gas": ["6kg Gas Cylinder", "12kg Gas Cylinder", "18kg Gas Cylinder"],
+    "Oil": ["Engine Oil 2kg", "Engine Oil 5kg", "Premium Oil"],
+    "Chemicals": ["Industrial Chemicals", "Cleaning Solutions"]
+}
+delivery_addresses = ["Nairobi CBD", "Westlands", "Karen", "Kasarani", "Ruiru", "Mombasa Town", "Kisumu Center"]
+
+for i in range(5):
+    user_id = BASE_USER + random.randint(1, 5)
+    category = random.choice(bulk_categories)
+    product_type = random.choice(bulk_products[category])
+    quantity = random.randint(100, 1000)  # Bulk orders are larger quantities
+    delivery_address = random.choice(delivery_addresses)
+    total_cost = quantity * random.randint(50, 150)  # Calculate cost based on quantity
+    status = random.choice(["Pending", "Confirmed", "In Transit", "Delivered"])
+    
+    cursor.execute("""
+    INSERT OR IGNORE INTO BulkOrders (
+        bulkorder_id, user_id, product_category, product_type, 
+        quantity_requested, delivery_address, total_cost, status, order_timestamp
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        BASE_BULK_ORDERS + i,
+        user_id,
+        category,
+        product_type,
+        quantity,
+        delivery_address,
+        total_cost,
+        status,
+        int(time.time()) - random.randint(0, 86400 * 7)  # up to 7 days ago
+    ))
+
+# -------------------------------
 # Insert dummy Reviews
 # -------------------------------
 for i in range(1, 11):
@@ -495,6 +552,8 @@ print(f"Database '{db_name}' created successfully with namespaced IDs.")
 print(f"✅ Gas Refill Orders table added with sample data (IDs start at {BASE_GAS_REFILL}).")
 print(f"✅ Fleet Orders table added with sample data (IDs start at {BASE_FLEET_ORDERS}).")
 print(f"✅ Fleet Order Assignments table added with sample data (IDs start at {BASE_FLEET_ASSIGNMENTS}).")
+print(f"✅ Bulk Orders table added with sample data (IDs start at {BASE_BULK_ORDERS}).")
 print(f"✅ Products table now references employee_id instead of user_id.")
 print(f"✅ FleetOrders includes duration tracking and cost calculation.")
 print(f"✅ FleetOrderAssignments tracks individual vehicle assignments to orders.")
+print(f"✅ BulkOrders tracks large quantity product orders with delivery.")

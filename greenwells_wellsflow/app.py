@@ -1095,6 +1095,136 @@ def ordersmanage():
                            total_orders=total_orders)
 
 
+@app.route("/fleetordersmanage", methods=['GET', 'POST'])
+@role_required(['CustomerService', 'Admin', 'Financer', 'FleetManager'])
+def fleet_orders_manage():
+    conn = sqlite3.connect(shopfleetdb)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    filter_status = request.args.get('status')
+
+    if request.method == 'POST':
+        fleetorder_id = request.form.get('fleetorder_id')
+        action = request.form.get('action')  # 'status' or 'fleet_assignment'
+        
+        if action == 'status':
+            new_status = request.form.get('status')
+            cursor.execute("UPDATE FleetOrders SET status = ? WHERE fleetorder_id = ?", (new_status, fleetorder_id))
+            conn.commit()
+            flash("Fleet order status updated successfully!", "success")
+        elif action == 'fleet_assignment':
+            fleet_id = request.form.get('fleet_id')
+            if fleet_id:
+                # Create assignment in FleetOrderAssignments table
+                assignment_timestamp = time.time()
+                cursor.execute("""
+                    INSERT INTO FleetOrderAssignments (fleetorder_id, fleet_id, assignment_timestamp, status)
+                    VALUES (?, ?, ?, 'Active')
+                """, (fleetorder_id, fleet_id, assignment_timestamp))
+                
+                # Update assigned quantity in FleetOrders
+                cursor.execute("""
+                    UPDATE FleetOrders 
+                    SET assigned_quantity = assigned_quantity + 1, 
+                        status = CASE 
+                            WHEN assigned_quantity + 1 >= quantity THEN 'Assigned'
+                            ELSE 'Partially Assigned'
+                        END
+                    WHERE fleetorder_id = ?
+                """, (fleetorder_id,))
+                
+                conn.commit()
+                flash("Fleet vehicle assigned successfully!", "success")
+            else:
+                flash("Please select a fleet vehicle!", "error")
+
+        redirect_url = url_for('fleet_orders_manage')
+        if filter_status:
+            redirect_url += f'?status={filter_status}'
+        return redirect(redirect_url)
+
+    # Get fleets with assigned drivers (status is 'Assigned')
+    cursor.execute("""
+        SELECT f.fleet_id, f.registration_number, f.fleet_brand, f.fleet_model, 
+               e.first_name, e.last_name
+        FROM Fleet f
+        LEFT JOIN Employees e ON f.employee_id = e.employee_id
+        WHERE f.status = 'Assigned' AND f.employee_id != '0' AND f.employee_id IS NOT NULL
+        ORDER BY f.registration_number
+    """)
+    fleets = cursor.fetchall()
+
+    # Fetch fleet orders with related information
+    if filter_status:
+        cursor.execute("""
+            SELECT fo.*, 
+                   u.first_name as customer_first_name, 
+                   u.last_name as customer_last_name,
+                   u.email as customer_email,
+                   u.location as customer_location,
+                   u.phone_number as customer_phone,
+                   -- Get assignment count
+                   (SELECT COUNT(*) FROM FleetOrderAssignments WHERE fleetorder_id = fo.fleetorder_id AND status = 'Active') as active_assignments
+            FROM FleetOrders fo
+            LEFT JOIN Users u ON fo.user_id = u.user_id
+            WHERE fo.status = ?
+            ORDER BY fo.order_timestamp DESC
+        """, (filter_status,))
+    else:
+        cursor.execute("""
+            SELECT fo.*, 
+                   u.first_name as customer_first_name, 
+                   u.last_name as customer_last_name,
+                   u.email as customer_email,
+                   u.location as customer_location,
+                   u.phone_number as customer_phone,
+                   -- Get assignment count
+                   (SELECT COUNT(*) FROM FleetOrderAssignments WHERE fleetorder_id = fo.fleetorder_id AND status = 'Active') as active_assignments
+            FROM FleetOrders fo
+            LEFT JOIN Users u ON fo.user_id = u.user_id
+            ORDER BY fo.order_timestamp DESC
+        """)
+    
+    orders = cursor.fetchall()
+
+    # Get active assignments for each order
+    order_assignments = {}
+    for order in orders:
+        cursor.execute("""
+            SELECT foa.*, f.registration_number, f.fleet_brand, f.fleet_model,
+                   e.first_name as driver_first, e.last_name as driver_last
+            FROM FleetOrderAssignments foa
+            JOIN Fleet f ON foa.fleet_id = f.fleet_id
+            LEFT JOIN Employees e ON f.employee_id = e.employee_id
+            WHERE foa.fleetorder_id = ? AND foa.status = 'Active'
+            ORDER BY foa.assignment_timestamp DESC
+        """, (order['fleetorder_id'],))
+        order_assignments[order['fleetorder_id']] = cursor.fetchall()
+
+    # Get status counts
+    cursor.execute("""
+        SELECT status, COUNT(*) as count 
+        FROM FleetOrders 
+        GROUP BY status
+    """)
+    status_counts = cursor.fetchall()
+
+    # Get total orders count
+    cursor.execute("SELECT COUNT(*) as total FROM FleetOrders")
+    total_orders = cursor.fetchone()['total']
+
+    conn.close()
+
+    return render_template("fleet/fleet_extend/orders/managefleetorders.html",
+                           orders=orders,
+                           fleets=fleets,
+                           status_counts=status_counts,
+                           current_filter=filter_status,
+                           total_orders=total_orders,
+                           order_assignments=order_assignments)
+
+
 @app.route("/vieworders")
 @login_required
 def vieworders():
@@ -1245,6 +1375,197 @@ def finances():
 @role_required(['Admin', 'Financer', 'ProductManager'])
 def reports():
     return render_template("fleet/adminside_fleet/reports.html")
+
+
+@app.route("/bulk", methods=["GET", "POST"])
+@login_required
+def bulkgoods():
+    if request.method == "POST":
+        product_category = request.form.get("product_category")
+        product_type = request.form.get("product_type")
+        quantity_requested = request.form.get("quantity_requested")
+        delivery_address = request.form.get("delivery_address")
+        
+        # Validation
+        if not all([product_category, product_type, quantity_requested, delivery_address]):
+            flash("Please fill all required fields.", "danger")
+            return render_template("shop/bulk.html")
+        
+        try:
+            quantity_requested = int(quantity_requested)
+            if quantity_requested <= 0:
+                flash("Quantity must be greater than 0.", "danger")
+                return render_template("shop/bulk.html")
+        except ValueError:
+            flash("Quantity must be a valid number.", "danger")
+            return render_template("shop/bulk.html")
+        
+        # Calculate cost (you can adjust the pricing logic)
+        base_prices = {
+            "Fuel": {"Unleaded Premium": 120, "Low Sulphur Diesel": 110, "Kerosine": 100},
+            "Gas": {"6kg Gas Cylinder": 1500, "12kg Gas Cylinder": 2800, "18kg Gas Cylinder": 4000},
+            "Oil": {"Engine Oil 2kg": 800, "Engine Oil 5kg": 1800, "Premium Oil": 1200},
+            "Chemicals": {"Industrial Chemicals": 200, "Cleaning Solutions": 150}
+        }
+        
+        # Get base price for the product
+        base_price = base_prices.get(product_category, {}).get(product_type, 100)
+        total_cost = quantity_requested * base_price
+        
+        try:
+            conn = sqlite3.connect(shopfleetdb)
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                INSERT INTO BulkOrders (
+                    user_id, product_category, product_type, 
+                    quantity_requested, delivery_address, total_cost, 
+                    status, order_timestamp
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                current_user.user_id,
+                product_category,
+                product_type,
+                quantity_requested,
+                delivery_address,
+                total_cost,
+                'Pending',  # Initial status
+                time.time()
+            ))
+            
+            order_id = cursor.lastrowid
+            conn.commit()
+            conn.close()
+            
+            flash(f"Bulk order submitted successfully! Order ID: #{order_id}", "success")
+            return redirect(url_for("bulkgoods"))
+            
+        except Exception as e:
+            flash(f"Error submitting bulk order: {str(e)}", "danger")
+            return render_template("shop/bulk.html")
+    
+    return render_template("shop/bulk.html")
+
+
+@app.route("/my-bulk-orders")
+@login_required
+def my_bulk_orders():
+    conn = sqlite3.connect(shopfleetdb)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    # Get bulk orders for current user
+    cursor.execute("""
+        SELECT bo.*, u.first_name, u.last_name
+        FROM BulkOrders bo
+        JOIN Users u ON bo.user_id = u.user_id
+        WHERE bo.user_id = ?
+        ORDER BY bo.order_timestamp DESC
+    """, (current_user.user_id,))
+    
+    orders = cursor.fetchall()
+    conn.close()
+    
+    return render_template("shop/my_bulk_orders.html", orders=orders)
+
+
+@app.route("/bulkordersmanage", methods=['GET', 'POST'])
+@role_required(['CustomerService', 'Admin', 'Financer', 'FleetManager'])
+def bulk_orders_manage():
+    conn = sqlite3.connect(shopfleetdb)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    filter_status = request.args.get('status')
+
+    if request.method == 'POST':
+        bulkorder_id = request.form.get('bulkorder_id')
+        action = request.form.get('action')  # 'status' or 'fleet'
+        
+        if action == 'status':
+            new_status = request.form.get('status')
+            cursor.execute("UPDATE BulkOrders SET status = ? WHERE bulkorder_id = ?", (new_status, bulkorder_id))
+            conn.commit()
+            flash("Bulk order status updated successfully!", "success")
+        elif action == 'fleet':
+            fleet_id = request.form.get('fleet_id')
+            if fleet_id:
+                # Update fleet assignment and set status to 'In Transit'
+                cursor.execute("UPDATE BulkOrders SET fleet_id = ?, status = 'In Transit' WHERE bulkorder_id = ?", (fleet_id, bulkorder_id))
+                conn.commit()
+                flash("Fleet assigned successfully and status set to In Transit!", "success")
+            else:
+                flash("Please select a fleet vehicle!", "error")
+
+        redirect_url = url_for('bulk_orders_manage')
+        if filter_status:
+            redirect_url += f'?status={filter_status}'
+        return redirect(redirect_url)
+
+    # Get fleets with assigned drivers (status is 'Assigned')
+    cursor.execute("""
+        SELECT f.fleet_id, f.registration_number, f.fleet_brand, f.fleet_model, 
+               e.first_name, e.last_name
+        FROM Fleet f
+        LEFT JOIN Employees e ON f.employee_id = e.employee_id
+        WHERE f.status = 'Assigned' AND f.employee_id != '0' AND f.employee_id IS NOT NULL
+        ORDER BY f.registration_number
+    """)
+    fleets = cursor.fetchall()
+
+    # Fetch bulk orders with related information
+    if filter_status:
+        cursor.execute("""
+            SELECT bo.*, 
+                   u.first_name as customer_first_name, 
+                   u.last_name as customer_last_name,
+                   u.email as customer_email,
+                   u.location as customer_location,
+                   u.phone_number as customer_phone,
+                   f.registration_number as fleet_registration
+            FROM BulkOrders bo
+            LEFT JOIN Users u ON bo.user_id = u.user_id
+            LEFT JOIN Fleet f ON bo.fleet_id = f.fleet_id
+            WHERE bo.status = ?
+            ORDER BY bo.order_timestamp DESC
+        """, (filter_status,))
+    else:
+        cursor.execute("""
+            SELECT bo.*, 
+                   u.first_name as customer_first_name, 
+                   u.last_name as customer_last_name,
+                   u.email as customer_email,
+                   u.location as customer_location,
+                   u.phone_number as customer_phone,
+                   f.registration_number as fleet_registration
+            FROM BulkOrders bo
+            LEFT JOIN Users u ON bo.user_id = u.user_id
+            LEFT JOIN Fleet f ON bo.fleet_id = f.fleet_id
+            ORDER BY bo.order_timestamp DESC
+        """)
+    
+    orders = cursor.fetchall()
+
+    # Get status counts
+    cursor.execute("""
+        SELECT status, COUNT(*) as count 
+        FROM BulkOrders 
+        GROUP BY status
+    """)
+    status_counts = cursor.fetchall()
+
+    # Get total orders count
+    cursor.execute("SELECT COUNT(*) as total FROM BulkOrders")
+    total_orders = cursor.fetchone()['total']
+
+    conn.close()
+
+    return render_template("fleet/fleet_extend/orders/managebulkorders.html",
+                           orders=orders,
+                           fleets=fleets,
+                           status_counts=status_counts,
+                           current_filter=filter_status,
+                           total_orders=total_orders)
 
 
 
