@@ -183,56 +183,56 @@
         {% endwith %}
       </div>
 
-      <!-- Products Grid -->
-      <div class="row g-4" id="productsContainer">
-        {% for product in products %}
-        <div class="col-md-6 product-item" 
-             data-id="{{ product['product_id'] }}" 
-             data-name="{{ product['product_name'] }}" 
-             data-category="{{ product['product_category'] }}">
-          <div class="glass-card p-3 h-100 d-flex flex-column">
-            <div class="text-center mb-3">
-              <img src="{{ url_for('static', filename='images/products/' + product['product_image']) }}"
-                   alt="{{ product['product_name'] }}"
-                   class="img-fluid rounded"
-                   style="max-height: 120px; object-fit: contain;">
-            </div>
-            <h6 class="fw-bold">{{ product['product_name'] }}</h6>
-            <p class="text-muted small">{{ product['product_description'] }}</p>
-            <p class="fw-bold text-success">KES {{ product['retail_price'] }}</p>
-            <div class="mt-auto">
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <a href="#" class="btn btn-outline-secondary btn-sm">Wishlist</a>
-                <div class="quantity-selector">
-                  <button type="button"
-                          class="btn btn-outline-secondary quantity-btn quantity-decrease"
-                          data-product-id="{{ product['product_id'] }}">-</button>
+<!-- Products Grid -->
+<div class="row g-4" id="productsContainer">
+  {% for product in products %}
+  <div class="col-md-3 product-item"  
+       data-id="{{ product['product_id'] }}" 
+       data-name="{{ product['product_name'] }}" 
+       data-category="{{ product['product_category'] }}">
+    <div class="glass-card p-3 h-100 d-flex flex-column">
+      <div class="text-center mb-3">
+        <img src="{{ url_for('static', filename='images/products/' + product['product_image']) }}"
+             alt="{{ product['product_name'] }}"
+             class="img-fluid rounded"
+             style="max-height: 120px; object-fit: contain;">
+      </div>
+      <h6 class="fw-bold">{{ product['product_name'] }}</h6>
+      <p class="text-muted small">{{ product['product_description'] }}</p>
+      <p class="fw-bold text-success">KES {{ product['retail_price'] }}</p>
+      <div class="mt-auto">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <a href="#" class="btn btn-outline-secondary btn-sm">Wishlist</a>
+          <div class="quantity-selector">
+            <button type="button"
+                    class="btn btn-outline-secondary quantity-btn quantity-decrease"
+                    data-product-id="{{ product['product_id'] }}">-</button>
 
-                  <input type="number"
-                         id="quantity-{{ product['product_id'] }}"
-                         class="form-control quantity-input"
-                         value="1"
-                         min="1"
-                         max="100">
+            <input type="number"
+                   id="quantity-{{ product['product_id'] }}"
+                   class="form-control quantity-input"
+                   value="1"
+                   min="1"
+                   max="100">
 
-                  <button type="button"
-                          class="btn btn-outline-secondary quantity-btn quantity-increase"
-                          data-product-id="{{ product['product_id'] }}">+</button>
-                </div>
-              </div>
-
-              <!-- Add to cart form: note the class 'add-to-cart-form' for JS syncing -->
-              <form action="{{ url_for('shop.add_to_cart', product_id=product['product_id']) }}"
-                    method="post"
-                    class="d-grid add-to-cart-form">
-                <input type="hidden" name="quantity" id="hidden-quantity-{{ product['product_id'] }}" value="1">
-                <button type="submit" class="btn btn-success btn-sm">Add to Cart</button>
-              </form>
-            </div>
+            <button type="button"
+                    class="btn btn-outline-secondary quantity-btn quantity-increase"
+                    data-product-id="{{ product['product_id'] }}">+</button>
           </div>
         </div>
-        {% endfor %}
+
+        <!-- Add to cart form: note the class 'add-to-cart-form' for JS syncing -->
+        <form action="{{ url_for('shop.add_to_cart', product_id=product['product_id']) }}"
+              method="post"
+              class="d-grid add-to-cart-form">
+          <input type="hidden" name="quantity" id="hidden-quantity-{{ product['product_id'] }}" value="1">
+          <button type="submit" class="btn btn-success btn-sm">Add to Cart</button>
+        </form>
       </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
 
       <!-- Pagination Controls -->
       <div class="pagination-container">
