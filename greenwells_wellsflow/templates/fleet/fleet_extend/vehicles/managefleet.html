@@ -123,6 +123,21 @@
                         <p><strong>Category:</strong> {{ fleet['fleet_category'] }}</p>
                         <p><strong>Registration Date:</strong> {{ fleet['registration_date'] }}</p>
                         <p><strong>Mileage:</strong> {{ fleet['fleet_mileage'] }}</p>
+                                                <h6>Location Information</h6>
+                        <p id="locationText{{ fleet['fleet_id'] }}"><strong>Last Known Location:</strong> 
+                          {% if fleet['last_known_location'] %}
+                            {{ fleet['last_known_location'] }}
+                          {% else %}
+                            <span class="text-muted">Not available</span>
+                          {% endif %}
+                        </p>
+                        <p id="coordinatesText{{ fleet['fleet_id'] }}"><strong>Coordinates:</strong> 
+                          {% if fleet['last_known_lat'] and fleet['last_known_lng'] %}
+                            Lat: {{ "%.6f"|format(fleet['last_known_lat']) }}, Lng: {{ "%.6f"|format(fleet['last_known_lng']) }}
+                          {% else %}
+                            <span class="text-muted">Not available</span>
+                          {% endif %}
+                        </p>
                       </div>
                       <div class="col-md-6">
                         <p><strong>Chassis Number:</strong> {{ fleet['chassis_number'] }}</p>
@@ -144,21 +159,6 @@
                         </p>
                         <!-- NEW: Location Information Section with specific IDs -->
                         <hr>
-                        <h6>Location Information</h6>
-                        <p id="locationText{{ fleet['fleet_id'] }}"><strong>Last Known Location:</strong> 
-                          {% if fleet['last_known_location'] %}
-                            {{ fleet['last_known_location'] }}
-                          {% else %}
-                            <span class="text-muted">Not available</span>
-                          {% endif %}
-                        </p>
-                        <p id="coordinatesText{{ fleet['fleet_id'] }}"><strong>Coordinates:</strong> 
-                          {% if fleet['last_known_lat'] and fleet['last_known_lng'] %}
-                            Lat: {{ "%.6f"|format(fleet['last_known_lat']) }}, Lng: {{ "%.6f"|format(fleet['last_known_lng']) }}
-                          {% else %}
-                            <span class="text-muted">Not available</span>
-                          {% endif %}
-                        </p>
                         <p id="lastUpdatedText{{ fleet['fleet_id'] }}"><strong>Last Updated:</strong> 
                           {% if fleet['last_location_update'] %}
                             <!-- Jinja2 filter will be applied if defined in app -->
@@ -531,14 +531,6 @@
     })
     .then(response => response.json())
     .then(data => {
-      // Check if the server indicated a logout due to VPN (e.g., location is China)
-      if (data.logout) {
-        alert(data.message || 'Logged out due to location restriction (VPN detected).');
-        // Optionally, redirect the user to the login page
-        window.location.href = '/login'; // Replace '/login' with your actual login URL
-        return; // Stop further execution for this request
-      }
-
       if (data.success) {
         // Update the modal footer content
         const locationSpan = document.querySelector(`#lastKnownLocation${fleetId}`);
@@ -552,6 +544,7 @@
         const locationTextElement = document.getElementById(`locationText${fleetId}`);
         const coordinatesTextElement = document.getElementById(`coordinatesText${fleetId}`);
         const lastUpdatedTextElement = document.getElementById(`lastUpdatedText${fleetId}`);
+        // const ipTextElement = document.getElementById(`ipText${fleetId}`); // IP is not updated by the ping function's return data
 
         if (locationTextElement) {
             locationTextElement.innerHTML = `<strong>Last Known Location:</strong> ${data.location || '<span class="text-muted">Not available</span>'}`;
@@ -564,17 +557,19 @@
             console.warn(`Coordinates text element not found for fleet ID: ${fleetId}`);
         }
         if (lastUpdatedTextElement) {
+            // Use the current client-side time for 'Last Updated'
             const now = new Date();
+            // Format the date as needed, e.g., locale string
             const timestampString = now.toLocaleString();
             lastUpdatedTextElement.innerHTML = `<strong>Last Updated:</strong> ${timestampString}`;
         } else {
             console.warn(`Last updated text element not found for fleet ID: ${fleetId}`);
         }
+        // IP is not returned by the ping function, so we don't update it here unless the server response changes.
 
         alert(`Location updated successfully!\nLat: ${data.lat.toFixed(6)}, Lng: ${data.lng.toFixed(6)}`);
       } else {
-        // Handle other errors (not logout)
-        alert(`Error: ${data.message || 'An unknown error occurred.'}`);
+        alert(`Error: ${data.message}`);
       }
     })
     .catch(error => {
