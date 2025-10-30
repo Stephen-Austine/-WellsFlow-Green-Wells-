@@ -291,39 +291,62 @@ for i in range(1, 6):
     ))
 
 # -------------------------------
-# Insert dummy Products
+# Insert dummy Products - REDUCED TO 20 PRODUCTS WITH SPECIFIC CATEGORIES
 # -------------------------------
-categories = {
-    "Gas Cylinder": ["6kg", "12kg", "18kg", "24kg", "32kg"],
-    "White Products": ["Unleaded Premium", "Low Sulphur Diesel", "Kerosine"],
-    "Engine Oil": ["2kg", "1kg", "5kg", "Premium", "Fast", "Ultra"]
-}
+product_data = [
+    # Lubricants (5 products)
+    ("Engine Oil 5L", "Lubricants", "Premium engine oil for all vehicles", "lubricants.jpg", 50, 800, 1200),
+    ("Gear Oil 1L", "Lubricants", "High-grade gear oil for transmissions", "lubricants.jpg", 30, 600, 900),
+    ("Grease 400g", "Lubricants", "Multi-purpose grease for heavy machinery", "lubricants.jpg", 40, 400, 650),
+    ("Hydraulic Oil 5L", "Lubricants", "Hydraulic system oil for industrial use", "lubricants.jpg", 25, 700, 1000),
+    ("Brake Fluid", "Lubricants", "DOT 4 brake fluid for safe braking", "lubricants.jpg", 60, 300, 500),
+    
+    # White Products (5 products)
+    ("Unleaded Premium", "White Products", "Premium unleaded petrol for vehicles", "whiteproducts.jpg", 1000, 110, 150),
+    ("Low Sulphur Diesel", "White Products", "Clean diesel fuel for vehicles", "whiteproducts.jpg", 1200, 105, 140),
+    ("Kerosine", "White Products", "Clean burning kerosine for cooking", "whiteproducts.jpg", 800, 90, 120),
+    ("Jet A-1", "White Products", "Aviation fuel for aircraft", "whiteproducts.jpg", 500, 130, 170),
+    ("LPG", "White Products", "Liquefied petroleum gas", "whiteproducts.jpg", 200, 120, 160),
+    
+    # Gas Cylinder (5 products)
+    ("6kg Gas Cylinder", "Gas Cylinder", "Standard 6kg gas cylinder", "cylinder.jpg", 150, 1400, 2000),
+    ("12kg Gas Cylinder", "Gas Cylinder", "Standard 12kg gas cylinder", "cylinder.jpg", 120, 2700, 3500),
+    ("18kg Gas Cylinder", "Gas Cylinder", "Standard 18kg gas cylinder", "cylinder.jpg", 80, 3900, 4800),
+    ("24kg Gas Cylinder", "Gas Cylinder", "Standard 24kg gas cylinder", "cylinder.jpg", 60, 4800, 5800),
+    ("32kg Gas Cylinder", "Gas Cylinder", "Standard 32kg gas cylinder", "cylinder.jpg", 40, 6000, 7200),
+    
+    # Engine Oil (5 products)
+    ("Synthetic 5W-30", "Engine Oil", "Synthetic engine oil 5W-30", "engineoil.jpg", 70, 1000, 1500),
+    ("Mineral 15W-40", "Engine Oil", "Mineral engine oil 15W-40", "engineoil.jpg", 80, 600, 900),
+    ("Diesel 10W-30", "Engine Oil", "Diesel engine oil 10W-30", "engineoil.jpg", 65, 800, 1200),
+    ("2-Stroke Oil", "Engine Oil", "2-stroke engine oil", "engineoil.jpg", 90, 400, 600),
+    ("Compressor Oil", "Engine Oil", "Compressor oil for air compressors", "engineoil.jpg", 50, 700, 1000)
+]
+
 product_id = BASE_PRODUCT + 1
-for category, subs in categories.items():
-    for sub in subs:
-        for n in range(10):
-            cursor.execute("""
-            INSERT OR IGNORE INTO Products (
-                product_id, product_name, product_category, product_description,
-                product_image, product_quantity, product_cost, retail_price,
-                employee_id, product_registration, product_location, location_description, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                product_id,
-                f"{sub} {category}",
-                category,
-                f"High quality {sub} {category}",
-                f"/images/{category.lower().replace(' ', '_')}_{sub.lower().replace(' ', '_')}.png",
-                random.randint(10, 100),
-                random.randint(500, 2000),
-                random.randint(2500, 5000),
-                BASE_EMPLOYEE + random.randint(2, 10),  # Changed to employee_id
-                f"REG-{product_id:09d}",
-                "Nairobi Depot",
-                f"{sub} storage section",
-                "Not sold"
-            ))
-            product_id += 1
+for product_name, category, description, image_path, quantity, cost, price in product_data:
+    cursor.execute("""
+    INSERT OR IGNORE INTO Products (
+        product_id, product_name, product_category, product_description,
+        product_image, product_quantity, product_cost, retail_price,
+        employee_id, product_registration, product_location, location_description, status
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        product_id,
+        product_name,
+        category,
+        description,
+        image_path,  # Changed to reference static/img/ path
+        quantity,
+        cost,
+        price,
+        BASE_EMPLOYEE + random.randint(2, 10),  # Changed to employee_id
+        f"REG-{product_id:09d}",
+        "Nairobi Depot",
+        f"{product_name} storage section",
+        "Not sold"
+    ))
+    product_id += 1
 
 # -------------------------------
 # Insert dummy Fleet
@@ -348,12 +371,12 @@ for i in range(1, 6):
 # -------------------------------
 cart_id = BASE_CART + 1
 for user_id in range(1, 6):
-    user_cart_items = random.randint(1, 5)
+    user_cart_items = random.randint(1, 3)  # Reduced to max 3 items per user
     used_products = set()
     for _ in range(user_cart_items):
-        product_id = BASE_PRODUCT + random.randint(1, 150)
+        product_id = BASE_PRODUCT + random.randint(0, 19)  # Only 20 products now (0-19)
         while product_id in used_products:
-            product_id = BASE_PRODUCT + random.randint(1, 150)
+            product_id = BASE_PRODUCT + random.randint(0, 19)
         used_products.add(product_id)
         cursor.execute("""
         INSERT OR IGNORE INTO Cart (
@@ -537,7 +560,7 @@ for i in range(1, 11):
     ) VALUES (?, ?, ?, ?, ?, ?, ?)
     """, (
         BASE_REVIEW + i,
-        BASE_PRODUCT + random.randint(1, 150),
+        BASE_PRODUCT + random.randint(0, 19),  # Only 20 products
         f"Review {i} for product", random.randint(1, 5),
         BASE_USER + random.randint(1, 5),
         time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -557,3 +580,4 @@ print(f"✅ Products table now references employee_id instead of user_id.")
 print(f"✅ FleetOrders includes duration tracking and cost calculation.")
 print(f"✅ FleetOrderAssignments tracks individual vehicle assignments to orders.")
 print(f"✅ BulkOrders tracks large quantity product orders with delivery.")
+print(f"✅ Products reduced to 20 items with specific categories and image paths.")

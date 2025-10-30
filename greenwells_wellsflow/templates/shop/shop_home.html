@@ -192,7 +192,13 @@
        data-category="{{ product['product_category'] }}">
     <div class="glass-card p-3 h-100 d-flex flex-column">
       <div class="text-center mb-3">
-        <img src="{{ url_for('static', filename='images/products/' + product['product_image']) }}"
+        <img src="
+          {% if product['product_image'] and product['product_image'] != '' %}
+            {{ url_for('static', filename='uploads/' + product['product_image']) }}
+          {% else %}
+            {{ url_for('static', filename='images/default_product.jpg') }}
+          {% endif %}
+        "
              alt="{{ product['product_name'] }}"
              class="img-fluid rounded"
              style="max-height: 120px; object-fit: contain;">
