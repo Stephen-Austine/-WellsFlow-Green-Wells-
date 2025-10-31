@@ -27,6 +27,17 @@ EMAIL_CONFIG = {
     'password': 'pbtf yndj pxvi wgva'   # Your app password
 }
 
+# Allowed email domains
+ALLOWED_EMAIL_DOMAINS = [
+    'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'live.com',
+    'aol.com', 'icloud.com', 'mail.com', 'protonmail.com', 'zoho.com',
+    'company.com', 'business.com', 'organization.com', 'enterprise.com',
+    'corporate.com', 'firm.com', 'institution.com', 'agency.com',
+    'gmail.co.ke', 'yahoo.co.ke', 'outlook.co.ke', 'hotmail.co.ke',  # Kenya specific
+    'yahoo.com.ng', 'gmail.com.ng', 'outlook.com.ng',  # Nigeria specific
+    'yahoo.com.gh', 'gmail.com.gh', 'outlook.com.gh',  # Ghana specific
+    'yahoo.com.za', 'gmail.com.za', 'outlook.com.za'   # South Africa specific
+]
 
 def encrypt_otp(otp):
     """Encrypt OTP using bcrypt for storage"""
@@ -48,34 +59,33 @@ def generate_otp():
 def send_otp_email(email, otp, name):
     """Send OTP via email"""
     try:
-        pass
-    #     msg = MIMEMultipart()
-    #     msg['From'] = EMAIL_CONFIG['email']
-    #     msg['To'] = email
-    #     msg['Subject'] = 'GreenWells - OTP Verification'
+        msg = MIMEMultipart()
+        msg['From'] = EMAIL_CONFIG['email']
+        msg['To'] = email
+        msg['Subject'] = 'GreenWells - OTP Verification'
 
-    #     body = f"""
-    #     Hello {name},
+        body = f"""
+        Hello {name},
         
-    #     Your OTP code for login is: {otp}
+        Your OTP code for login is: {otp}
         
-    #     This code will expire in 90 seconds.
+        This code will expire in 90 seconds.
         
-    #     If you didn't request this code, please ignore this email.
+        If you didn't request this code, please ignore this email.
         
-    #     Best regards,
-    #     GreenWells Team
-    #     """
+        Best regards,
+        GreenWells Team
+        """
 
-    #     msg.attach(MIMEText(body, 'plain'))
+        msg.attach(MIMEText(body, 'plain'))
 
-    #     server = smtplib.SMTP(EMAIL_CONFIG['smtp_server'], EMAIL_CONFIG['smtp_port'])
-    #     server.starttls()
-    #     server.login(EMAIL_CONFIG['email'], EMAIL_CONFIG['password'])
-    #     server.send_message(msg)
-    #     server.quit()
+        server = smtplib.SMTP(EMAIL_CONFIG['smtp_server'], EMAIL_CONFIG['smtp_port'])
+        server.starttls()
+        server.login(EMAIL_CONFIG['email'], EMAIL_CONFIG['password'])
+        server.send_message(msg)
+        server.quit()
         
-    #     return True
+        return True
     except Exception as e:
         print(f"Error sending email: {e}")
         email = "test mail"
@@ -177,6 +187,29 @@ def get_pending_employee(employee_id):
         }
     return None
 
+def is_valid_email_domain(email):
+    """Check if email domain is in allowed list"""
+    try:
+        domain = email.split('@')[1].lower()
+        return domain in ALLOWED_EMAIL_DOMAINS
+    except:
+        return False
+
+def get_allowed_domains_string():
+    """Get a formatted string of allowed domains for display"""
+    # Group by category for better display
+    general_domains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'live.com', 'aol.com', 'icloud.com', 'mail.com', 'protonmail.com', 'zoho.com']
+    official_domains = ['company.com', 'business.com', 'organization.com', 'enterprise.com', 'corporate.com', 'firm.com', 'institution.com', 'agency.com']
+    regional_domains = [d for d in ALLOWED_EMAIL_DOMAINS if d not in general_domains and d not in official_domains]
+    
+    allowed_domains_text = "General: " + ", ".join(general_domains) + " | "
+    allowed_domains_text += "Official: " + ", ".join(official_domains)
+    
+    if regional_domains:
+        allowed_domains_text += " | Regional: " + ", ".join(regional_domains)
+    
+    return allowed_domains_text
+
 # --- Signup ---
 @auth_bp.route("/signup", methods=["GET", "POST"])
 def signup():
@@ -188,6 +221,13 @@ def signup():
         cursor = conn.cursor()
 
         email = form.email.data.lower().strip()
+
+        # Check if email domain is allowed
+        if not is_valid_email_domain(email):
+            allowed_domains = get_allowed_domains_string()
+            flash(f"Email domain not allowed. Please use one of these domains: {allowed_domains}", "danger")
+            conn.close()
+            return render_template("auth/signup.html", form=form)
 
         # Check if the email already exists
         cursor.execute("SELECT email FROM Users WHERE email = ?", (email,))
