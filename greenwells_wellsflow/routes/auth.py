@@ -12,7 +12,8 @@ import time
 import base64
 
 # Define the database path
-shopfleetdb = '../-WellsFlow-Green-Wells-/greenwells_wellsflow/instance/shopfleet.db'
+#shopfleetdb = '../-WellsFlow-Green-Wells-/greenwells_wellsflow/instance/shopfleet.db'
+shopfleetdb = '../../greenwells_wellsflow/instance/shopfleet.db'
 
 # ✅ Define the blueprint here (no circular import)
 auth_bp = Blueprint("auth", __name__, template_folder="../templates/auth")

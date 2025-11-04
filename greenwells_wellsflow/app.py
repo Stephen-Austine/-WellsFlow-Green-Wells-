@@ -56,7 +56,8 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'greenwells_secret'
 
 # Path to your actual SQLite database
-shopfleetdb = '../-WellsFlow-Green-Wells-/greenwells_wellsflow/instance/shopfleet.db'
+shopfleetdb = 'greenwells_wellsflow/instance/shopfleet.db'
+#shopfleetdb = '../-WellsFlow-Green-Wells-/greenwells_wellsflow/instance/shopfleet.db'
 
 # Flask-Login setup
 login_manager = LoginManager(app)
@@ -1384,7 +1385,15 @@ def bulkgoods():
         product_category = request.form.get("product_category")
         product_type = request.form.get("product_type")
         quantity_requested = request.form.get("quantity_requested")
-        delivery_address = request.form.get("delivery_address")
+        destination_route = request.form.get("destination_route")
+        destination_town = request.form.get("destination_town")
+        additional_instructions = request.form.get("additional_instructions", "").strip()
+    
+        # Combine route + town for full delivery address
+        delivery_address = f"{destination_route} → {destination_town}"
+        if additional_instructions:
+            delivery_address += f" | {additional_instructions}"
+
         
         # Validation
         if not all([product_category, product_type, quantity_requested, delivery_address]):

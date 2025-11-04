@@ -9,7 +9,7 @@
         </button>
     </div>
 
-    <h2 class="fw-bold text-success">Fleet Rental Services</h2>
+    <h2 class="fw-bold text-success">Fleet Services</h2>
     <p class="text-muted">Request fleet vehicles for your transportation needs. Our system will auto-configure the rental duration and other details.</p>
 
     <form method="POST">
@@ -35,12 +35,47 @@
                 <small class="form-text text-muted">How many vehicles do you need?</small>
             </div>
         </div>
-        
-        <div class="mb-3">
-            <label for="destination" class="form-label fw-semibold text-success">Destination</label>
-            <input type="text" name="destination" id="destination" class="form-control rounded-3 border-success" placeholder="Enter destination" required>
-            <small class="form-text text-muted">This will also be used as delivery instructions</small>
+
+        <!-- New: Destination Route -->
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="destination_route" class="form-label fw-semibold text-success">Destination Route *</label>
+                <select name="destination_route" id="destination_route" class="form-select rounded-3 border-success" required>
+                    <option value="">Select Route</option>
+                    <option value="Nairobi - Mombasa">Nairobi - Mombasa</option>
+                    <option value="Nairobi - Kisumu">Nairobi - Kisumu</option>
+                    <option value="Kisumu - Luanda">Kisumu - Luanda</option>
+                    <option value="Luanda - Busia">Luanda - Busia</option>
+                    <option value="Nairobi - Eldoret">Nairobi - Eldoret</option>
+                    <option value="Nairobi - Nakuru">Nairobi - Nakuru</option>
+                </select>
+            </div>
+
+            <!-- New: Destination Town -->
+            <div class="col-md-6 mb-3">
+                <label for="destination_town" class="form-label fw-semibold text-success">Destination Town *</label>
+                <select name="destination_town" id="destination_town" class="form-select rounded-3 border-success" required>
+                    <option value="">Select Town</option>
+                    <option value="Sega">Sega</option>
+                    <option value="Kapsabet">Kapsabet</option>
+                    <option value="Busia">Busia</option>
+                    <option value="Kisumu">Kisumu</option>
+                    <option value="Eldoret">Eldoret</option>
+                    <option value="Nakuru">Nakuru</option>
+                    <option value="Thika">Thika</option>
+                    <option value="Ruiru">Ruiru</option>
+                </select>
+            </div>
         </div>
+        
+        <!-- New: Additional Instructions -->
+        <div class="mb-3">
+            <label for="additional_instructions" class="form-label fw-semibold text-success">Additional Instructions</label>
+            <textarea name="additional_instructions" id="additional_instructions" class="form-control rounded-3 border-success" rows="3" placeholder="e.g., Nyota Ndogo Fuelling Station opposite Guardian Angel booking station Stendi Kisa"></textarea>
+        </div>
+
+        <!-- Hidden field to combine route and town for backend (optional, if needed) -->
+        <!-- <input type="hidden" name="destination_combined" id="destination_combined"> -->
         
         <div class="card bg-white border-0 shadow-sm mb-3 rounded-4">
             <div class="card-body">

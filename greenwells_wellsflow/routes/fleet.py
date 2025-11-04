@@ -20,10 +20,14 @@ def fleet_home():
     if request.method == "POST":
         vehicle_type = request.form.get("vehicle_type")
         quantity = request.form.get("quantity")
-        destination = request.form.get("destination")
-        
-        # Validation
-        if not all([vehicle_type, quantity, destination]):
+        # --- NEW FIELDS ---
+        destination_route = request.form.get("destination_route")
+        destination_town = request.form.get("destination_town")
+        additional_instructions = request.form.get("additional_instructions", "").strip()
+        # ------------------
+
+        # --- VALIDATION ---
+        if not all([vehicle_type, quantity, destination_route, destination_town]):
             flash("Please fill all required fields.", "danger")
             return render_template("fleet/customer_request.html")
         
@@ -35,10 +39,23 @@ def fleet_home():
         except ValueError:
             flash("Quantity must be a valid number.", "danger")
             return render_template("fleet/customer_request.html")
-        
+        # ------------------
+
+        # --- COMBINE NEW FIELDS INTO DESTINATION/INSTRUCTIONS ---
+        # Option 1: Combine route and town into 'destination', add instructions separately
+        destination = f"{destination_route} → {destination_town}"
+        instructions = additional_instructions if additional_instructions else destination # Use combined route/town as fallback
+        # Option 2: Combine everything into 'instructions' and use route/town for 'destination'
+        # destination = f"{destination_route} → {destination_town}"
+        # instructions_parts = [destination]
+        # if additional_instructions:
+        #     instructions_parts.append(additional_instructions)
+        # instructions = " | ".join(instructions_parts)
+        # We'll use Option 1 for clarity in the DB.
+        # ------------------
+
         # Auto-fill fields
         duration_days = 10  # Fixed duration
-        instructions = destination  # Instructions same as destination
         start_date = datetime.now().strftime('%Y-%m-%d')  # Today's date
         expected_return_date = (datetime.now() + timedelta(days=duration_days)).strftime('%Y-%m-%d')
         order_timestamp = datetime.now().timestamp()
@@ -58,8 +75,8 @@ def fleet_home():
                 vehicle_type,  # Using vehicle_type as cargo_type for now
                 quantity,
                 0,  # assigned_quantity starts at 0
-                destination,
-                instructions,
+                destination, # Use the combined route/town
+                instructions, # Use the instructions field
                 duration_days,
                 start_date,
                 expected_return_date,
@@ -82,7 +99,6 @@ def fleet_home():
     
     return render_template("fleet/customer_request.html")
 
-# Additional route for viewing fleet order details (if needed)
 # Additional route for viewing fleet order details (if needed)
 @fleet_bp.route("/fleetorders")
 @login_required
