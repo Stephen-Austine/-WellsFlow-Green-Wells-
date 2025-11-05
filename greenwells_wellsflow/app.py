@@ -56,8 +56,8 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'greenwells_secret'
 
 # Path to your actual SQLite database
-shopfleetdb = 'greenwells_wellsflow/instance/shopfleet.db'
-#shopfleetdb = '../-WellsFlow-Green-Wells-/greenwells_wellsflow/instance/shopfleet.db'
+# shopfleetdb = 'greenwells_wellsflow/instance/shopfleet.db'
+shopfleetdb = '../-WellsFlow-Green-Wells-/greenwells_wellsflow/instance/shopfleet.db'
 
 # Flask-Login setup
 login_manager = LoginManager(app)
@@ -1385,18 +1385,14 @@ def bulkgoods():
         product_category = request.form.get("product_category")
         product_type = request.form.get("product_type")
         quantity_requested = request.form.get("quantity_requested")
+        # --- NEW FIELDS ---
         destination_route = request.form.get("destination_route")
         destination_town = request.form.get("destination_town")
         additional_instructions = request.form.get("additional_instructions", "").strip()
-    
-        # Combine route + town for full delivery address
-        delivery_address = f"{destination_route} → {destination_town}"
-        if additional_instructions:
-            delivery_address += f" | {additional_instructions}"
+        # ------------------
 
-        
-        # Validation
-        if not all([product_category, product_type, quantity_requested, delivery_address]):
+        # --- VALIDATION ---
+        if not all([product_category, product_type, quantity_requested, destination_route, destination_town]):
             flash("Please fill all required fields.", "danger")
             return render_template("shop/bulk.html")
         
@@ -1408,7 +1404,13 @@ def bulkgoods():
         except ValueError:
             flash("Quantity must be a valid number.", "danger")
             return render_template("shop/bulk.html")
-        
+        # ------------------
+
+        # --- COMBINE NEW FIELDS INTO DELIVERY ADDRESS ---
+        # Combine route and town into 'delivery_address', keep instructions separate
+        delivery_address = f"{destination_route} → {destination_town}"
+        # ------------------
+
         # Calculate cost (you can adjust the pricing logic)
         base_prices = {
             "Fuel": {"Unleaded Premium": 120, "Low Sulphur Diesel": 110, "Kerosine": 100},
@@ -1425,21 +1427,23 @@ def bulkgoods():
             conn = sqlite3.connect(shopfleetdb)
             cursor = conn.cursor()
             
+            # Insert using existing table structure with separate instructions column
             cursor.execute("""
                 INSERT INTO BulkOrders (
                     user_id, product_category, product_type, 
                     quantity_requested, delivery_address, total_cost, 
-                    status, order_timestamp
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    status, order_timestamp, instructions
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 current_user.user_id,
                 product_category,
                 product_type,
                 quantity_requested,
-                delivery_address,
+                delivery_address,  # Store route and town in delivery_address
                 total_cost,
                 'Pending',  # Initial status
-                time.time()
+                time.time(),
+                additional_instructions  # Store instructions separately
             ))
             
             order_id = cursor.lastrowid

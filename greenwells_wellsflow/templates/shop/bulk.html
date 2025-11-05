@@ -1,14 +1,22 @@
 {% extends "base2.html" %}
 {% block content %}
-<div class="container">
-    <h2>Bulk Product Orders</h2>
-    <p>Place large quantity orders for delivery. Perfect for businesses requiring regular bulk supplies.</p>
+<div class="container mt-3">
+
+    <!-- 🔙 Back Button -->
+    <div class="mb-3">
+        <button class="btn btn-success d-flex align-items-center gap-2 rounded-pill shadow-sm px-3" onclick="window.history.back()">
+            <i class="fas fa-arrow-left"></i> Back
+        </button>
+    </div>
+
+    <h2 class="fw-bold text-success">Bulk Product Orders</h2>
+    <p class="text-muted">Place large quantity orders for delivery. Perfect for businesses requiring regular bulk supplies.</p>
 
     <form method="POST">
         <div class="row">
             <div class="col-md-6 mb-3">
-                <label for="product_category" class="form-label">Product Category</label>
-                <select name="product_category" id="product_category" class="form-select" required onchange="updateProductTypes()">
+                <label for="product_category" class="form-label fw-semibold text-success">Product Category</label>
+                <select name="product_category" id="product_category" class="form-select rounded-3 border-success" required onchange="updateProductTypes()">
                     <option value="">Select Product Category</option>
                     <option value="Fuel">Fuel</option>
                     <option value="Gas">Gas</option>
@@ -18,8 +26,8 @@
             </div>
             
             <div class="col-md-6 mb-3">
-                <label for="product_type" class="form-label">Product Type</label>
-                <select name="product_type" id="product_type" class="form-select" required>
+                <label for="product_type" class="form-label fw-semibold text-success">Product Type</label>
+                <select name="product_type" id="product_type" class="form-select rounded-3 border-success" required>
                     <option value="">Select Product Type</option>
                     <!-- Options will be populated by JavaScript -->
                 </select>
@@ -28,22 +36,60 @@
         
         <div class="row">
             <div class="col-md-6 mb-3">
-                <label for="quantity_requested" class="form-label">Quantity Required</label>
-                <input type="number" name="quantity_requested" id="quantity_requested" class="form-control" min="10" max="10000" required>
+                <label for="quantity_requested" class="form-label fw-semibold text-success">Quantity Required</label>
+                <input type="number" name="quantity_requested" id="quantity_requested" class="form-control rounded-3 border-success" min="10" max="10000" required>
                 <small class="form-text text-muted">Minimum 10 units (liters, kg, etc.)</small>
             </div>
             
             <div class="col-md-6 mb-3">
-                <label for="delivery_address" class="form-label">Delivery Address</label>
-                <input type="text" name="delivery_address" id="delivery_address" class="form-control" placeholder="Enter full delivery address" required>
+                <label for="delivery_address" class="form-label fw-semibold text-success">Delivery Address</label>
+                <input type="text" name="delivery_address" id="delivery_address" class="form-control rounded-3 border-success" placeholder="Enter full delivery address" required>
                 <small class="form-text text-muted">Where should we deliver the products?</small>
             </div>
         </div>
+
+        <!-- New: Destination Route -->
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="destination_route" class="form-label fw-semibold text-success">Destination Route *</label>
+                <select name="destination_route" id="destination_route" class="form-select rounded-3 border-success" required>
+                    <option value="">Select Route</option>
+                    <option value="Nairobi - Mombasa">Nairobi - Mombasa</option>
+                    <option value="Nairobi - Kisumu">Nairobi - Kisumu</option>
+                    <option value="Kisumu - Luanda">Kisumu - Luanda</option>
+                    <option value="Luanda - Busia">Luanda - Busia</option>
+                    <option value="Nairobi - Eldoret">Nairobi - Eldoret</option>
+                    <option value="Nairobi - Nakuru">Nairobi - Nakuru</option>
+                </select>
+            </div>
+
+            <!-- New: Destination Town -->
+            <div class="col-md-6 mb-3">
+                <label for="destination_town" class="form-label fw-semibold text-success">Destination Town *</label>
+                <select name="destination_town" id="destination_town" class="form-select rounded-3 border-success" required>
+                    <option value="">Select Town</option>
+                    <option value="Sega">Sega</option>
+                    <option value="Kapsabet">Kapsabet</option>
+                    <option value="Busia">Busia</option>
+                    <option value="Kisumu">Kisumu</option>
+                    <option value="Eldoret">Eldoret</option>
+                    <option value="Nakuru">Nakuru</option>
+                    <option value="Thika">Thika</option>
+                    <option value="Ruiru">Ruiru</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- New: Additional Instructions -->
+        <div class="mb-3">
+            <label for="additional_instructions" class="form-label fw-semibold text-success">Additional Instructions</label>
+            <textarea name="additional_instructions" id="additional_instructions" class="form-control rounded-3 border-success" rows="3" placeholder="e.g., Nyota Ndogo Fuelling Station opposite Guardian Angel booking station Stendi Kisa"></textarea>
+        </div>
         
-        <div class="card bg-light mb-3">
+        <div class="card bg-white border-0 shadow-sm mb-3 rounded-4">
             <div class="card-body">
-                <h6>Order Details:</h6>
-                <ul class="mb-0">
+                <h6 class="text-success fw-bold">Order Details:</h6>
+                <ul class="mb-0 text-secondary">
                     <li><strong>Order Status:</strong> Pending</li>
                     <li><strong>Delivery:</strong> Scheduled after confirmation</li>
                     <li><strong>Payment:</strong> Upon delivery or as per agreement</li>
@@ -51,8 +97,14 @@
             </div>
         </div>
         
-        <button type="submit" class="btn btn-success">Place Bulk Order</button>
-        <a href="{{ url_for('my_bulk_orders') }}" class="btn btn-secondary">View My Bulk Orders</a>
+        <div class="d-flex gap-3">
+            <button type="submit" class="btn btn-success rounded-pill px-4">
+                <i class="fas fa-paper-plane"></i> Place Bulk Order
+            </button>
+            <a href="{{ url_for('my_bulk_orders') }}" class="btn btn-secondary rounded-pill px-4">
+                <i class="fas fa-list"></i> View My Orders
+            </a>
+        </div>
     </form>
 </div>
 
@@ -69,7 +121,8 @@ function updateProductTypes() {
     const productTypes = {
         'Fuel': ['Unleaded Premium', 'Low Sulphur Diesel', 'Kerosine'],
         'Gas': ['6kg Gas Cylinder', '12kg Gas Cylinder', '18kg Gas Cylinder'],
-        'Oil': ['Engine Oil 2kg', 'Engine Oil 5kg', 'Premium Oil']
+        'Oil': ['Engine Oil 2kg', 'Engine Oil 5kg', 'Premium Oil'],
+        'Chemicals': ['Industrial Chemicals', 'Cleaning Solutions']
     };
     
     if (selectedCategory && productTypes[selectedCategory]) {
@@ -87,4 +140,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updateProductTypes();
 });
 </script>
+
+<!-- Font Awesome for icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 {% endblock %}

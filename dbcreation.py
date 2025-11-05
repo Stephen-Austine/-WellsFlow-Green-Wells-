@@ -225,6 +225,7 @@ cursor.execute("ALTER TABLE Fleet ADD COLUMN last_known_lat REAL DEFAULT NULL;")
 cursor.execute("ALTER TABLE Fleet ADD COLUMN last_known_lng REAL DEFAULT NULL;")
 cursor.execute("ALTER TABLE Fleet ADD COLUMN last_location_update REAL DEFAULT NULL;")
 cursor.execute("ALTER TABLE GasRefillOrders ADD COLUMN fleet_id INTEGER DEFAULT NULL;")
+cursor.execute("ALTER TABLE BulkOrders ADD COLUMN instructions TEXT DEFAULT NULL;")
 
 # -------------------------------
 # Insert default admin employee
