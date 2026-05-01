@@ -1,4 +1,4 @@
-# 🌿 WellsFlow — GreenWells Business Management System
+# WellsFlow — GreenWells Business Management System
 
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![Flask](https://img.shields.io/badge/Flask-2.x-000000?style=for-the-badge&logo=flask&logoColor=white)
@@ -6,11 +6,11 @@
 ![Flask-Login](https://img.shields.io/badge/Flask--Login-Auth-4B8BBE?style=for-the-badge)
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=for-the-badge)
 
-WellsFlow is a full-stack business management web application built for **GreenWells** — a Kenyan company dealing in petroleum products, lubricants, and fleet logistics. The system unifies customer-facing e-commerce, internal fleet management, gas refill ordering, employee administration, and financial reporting into one platform.
+WellsFlow is a full-stack business management web application built for company dealing in petroleum products, lubricants, and fleet logistics. The system unifies customer-facing e-commerce, internal fleet management, gas refill ordering, employee administration, and financial reporting into one platform.
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Features](#-features)
 - [Tech Stack](#-tech-stack)
@@ -25,23 +25,23 @@ WellsFlow is a full-stack business management web application built for **GreenW
 
 ---
 
-## ✨ Features
+## Features
 
-- **🛒 E-Commerce Shop** — Product browsing, cart management, checkout, and order tracking
-- **🚛 Fleet Management** — Vehicle registration, assignment, fleet order management, and driver dashboards
-- **⛽ Gas Refill Ordering** — Customer-facing cylinder refill requests with admin approval workflow
-- **📦 Bulk Orders** — Wholesale/bulk product ordering with a dedicated management interface
-- **👥 Employee Management** — Add, edit, filter, and manage employees by role and status
-- **🏭 Production Management** — Manage product listings, stock, pricing, and images
-- **💰 Finance Dashboard** — Financial overview accessible to the Financer role
-- **📊 Reports** — Business reporting for management
-- **🔐 OTP Authentication** — Two-factor login via email OTP with 90-second expiry
-- **🛡️ Role-Based Access Control** — Granular route protection per employee role
-- **📍 Customer Order Tracking** — Real-time order status pages for shop and gas refill orders
+- **E-Commerce Shop** — Product browsing, cart management, checkout, and order tracking
+- **Fleet Management** — Vehicle registration, assignment, fleet order management, and driver dashboards
+- **Gas Refill Ordering** — Customer-facing cylinder refill requests with admin approval workflow
+- **Bulk Orders** — Wholesale/bulk product ordering with a dedicated management interface
+- **Employee Management** — Add, edit, filter, and manage employees by role and status
+- **Production Management** — Manage product listings, stock, pricing, and images
+- **Finance Dashboard** — Financial overview accessible to the Financer role
+- **Reports** — Business reporting for management
+- **OTP Authentication** — Two-factor login via email OTP with 90-second expiry
+- **Role-Based Access Control** — Granular route protection per employee role
+- **Customer Order Tracking** — Real-time order status pages for shop and gas refill orders
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |---|---|
@@ -57,7 +57,7 @@ WellsFlow is a full-stack business management web application built for **GreenW
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 greenwells_wellsflow/
@@ -107,7 +107,7 @@ greenwells_wellsflow/
 
 ---
 
-## 🗄️ Database Schema
+## Database Schema
 
 The app uses a single SQLite database (`shopfleet.db`) with the following core tables:
 
@@ -140,7 +140,7 @@ BulkOrders:            1,100,000,000+
 
 ---
 
-## 🔐 User Roles & Access Control
+## User Roles & Access Control
 
 Routes are protected with a custom `role_required` decorator defined in `app.py`.
 
@@ -167,9 +167,9 @@ Unauthorized users are redirected to their role's default page rather than a gen
 
 ---
 
-## 📦 Application Modules
+## Application Modules
 
-### 🔑 Authentication (`routes/auth.py`)
+### Authentication (`routes/auth.py`)
 
 | Route | Method | Description |
 |---|---|---|
@@ -183,7 +183,7 @@ OTP is bcrypt-hashed before storage and verified on submission. A background thr
 
 ---
 
-### 🛒 Shop (`routes/shop.py`)
+### Shop (`routes/shop.py`)
 
 | Route | Description |
 |---|---|
@@ -198,7 +198,7 @@ OTP is bcrypt-hashed before storage and verified on submission. A background thr
 
 ---
 
-### 🚛 Fleet (`routes/fleet.py` + `app.py`)
+### Fleet (`routes/fleet.py` + `app.py`)
 
 | Route | Description |
 |---|---|
@@ -214,7 +214,7 @@ Fleet orders capture: cargo type, quantity, destination route, destination town,
 
 ---
 
-### ⛽ Gas Refill (`routes/gasrefill.py`)
+### Gas Refill (`routes/gasrefill.py`)
 
 | Route | Description |
 |---|---|
@@ -226,7 +226,7 @@ Available cylinder types: Standard and Premium, in sizes 6 kg to 32 kg. Delivery
 
 ---
 
-### 👥 Employees (`routes/employees.py`)
+### Employees (`routes/employees.py`)
 
 | Route | Description |
 |---|---|
@@ -238,7 +238,7 @@ Admin-only. Supports filtering by role (Driver, Financer, Admin, etc.) and statu
 
 ---
 
-### 🏭 Production (`app.py`)
+### Production (`app.py`)
 
 | Route | Description |
 |---|---|
@@ -248,7 +248,7 @@ Admin-only. Supports filtering by role (Driver, Financer, Admin, etc.) and statu
 
 ---
 
-### 💼 Customer Service (`app.py`)
+### Customer Service (`app.py`)
 
 | Route | Description |
 |---|---|
@@ -261,7 +261,7 @@ Admin-only. Supports filtering by role (Driver, Financer, Admin, etc.) and statu
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -313,7 +313,7 @@ Navigate to `http://localhost:5000`.
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 Update the following before any deployment:
 
@@ -334,7 +334,7 @@ EMAIL_CONFIG = {
 app.config['SECRET_KEY'] = 'your-strong-random-secret-key'   # ← Replace
 ```
 
-> ⚠️ **Never commit real credentials.** Use environment variables or a `.env` file with `python-dotenv`.
+> **Never commit real credentials.** Use environment variables or a `.env` file with `python-dotenv`.
 
 **Recommended environment variable setup:**
 
@@ -345,7 +345,7 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
 
 ---
 
-## 🔑 Authentication Flow
+## Authentication Flow
 
 ```
 User submits email + password
@@ -377,7 +377,7 @@ Both `Users` (customers) and `Employees` (staff) authenticate through the same e
 
 ---
 
-## ⚠️ Known Issues & Limitations
+## Known Issues & Limitations
 
 - **Hardcoded DB paths** — Several route files use relative paths that depend on working directory. These should be centralized using `app.config` or an environment variable.
 - **OTP fixed for testing** — `generate_otp()` currently returns `"123456"`. Switch to `str(random.randint(100000, 999999))` before going live.
@@ -388,7 +388,7 @@ Both `Users` (customers) and `Employees` (staff) authenticate through the same e
 
 ---
 
-## 🙈 Recommended `.gitignore`
+## Recommended `.gitignore`
 
 ```gitignore
 # Database
@@ -410,13 +410,11 @@ venv/
 
 ---
 
-## 👤 Author
-
-**Stephen**
-Built for GreenWells — petroleum products and fleet logistics, Kenya.
+## Author
+Built for Petroleum products and fleet logistics companies.
 
 ---
 
 ## 📜 License
 
-This project is proprietary. All rights reserved.
+This project is proprietary. All rights reserved. Copying,cloning or duplication should not happen without my approval.
