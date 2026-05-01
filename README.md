@@ -411,6 +411,7 @@ venv/
 ---
 
 ## Author
+**Collaborative effort of Stephen, Andy and George.**
 Built for Petroleum products and fleet logistics companies.
 
 ---
